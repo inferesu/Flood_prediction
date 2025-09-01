@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 
 # --- Configuration ---
 TRAIN_DATA_FILE = 'minija_multi_precip_data_2020-2023.csv'
-TEST_DATA_FILE = 'test_data_2024.csv' # Your manually collected test data
+TEST_DATA_FILE = 'new_test.csv' # Your manually collected test data
 
 def prepare_features(df):
     """

@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/old_data_collector.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Flood_prediction_training.py" beforeDir="false" afterPath="$PROJECT_DIR$/Flood_prediction_training.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_data_2024.csv" beforeDir="false" afterPath="$PROJECT_DIR$/test_data_2024.csv" afterDir="false" />
@@ -49,6 +50,7 @@
     "Python.Data_collector.executor": "Run",
     "Python.Flood_prediction.executor": "Run",
     "Python.Flood_prediction_training.executor": "Run",
+    "Python.old_data_collector.executor": "Run",
     "Python.water_level_prediction.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
