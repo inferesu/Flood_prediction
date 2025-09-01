@@ -5,7 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Flood_prediction_training.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flood_prediction.py" beforeDir="false" afterPath="$PROJECT_DIR$/water_level_prediction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/minija_multi_precip_data_2021-2023.csv" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,6 +48,9 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.Data_collector.executor": "Run",
+    "Python.Flood_prediction.executor": "Run",
+    "Python.Flood_prediction_training.executor": "Run",
+    "Python.water_level_prediction.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
