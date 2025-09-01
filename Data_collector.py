@@ -1,7 +1,8 @@
-import requests
-import pandas as pd
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
+
+import pandas as pd
+import requests
 
 # --- Configuration ---
 DATA_FILE = 'minija_multi_precip_data_2021-2023.csv'
