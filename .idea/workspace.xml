@@ -5,9 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Load_test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Save_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Load_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/Load_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Save_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/Save_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bug_report_scalers.pth" beforeDir="false" afterPath="$PROJECT_DIR$/bug_report_scalers.pth" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/new_test.csv" beforeDir="false" afterPath="$PROJECT_DIR$/new_test.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/old_data_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/old_data_collector.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,29 +47,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.Data_collector.executor": "Run",
-    "Python.Flood_prediction.executor": "Run",
-    "Python.Flood_prediction_training.executor": "Run",
-    "Python.Load_test.executor": "Run",
-    "Python.Save_test.executor": "Run",
-    "Python.old_data_collector.executor": "Run",
-    "Python.water_level_prediction.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "advanced.settings",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.Data_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Flood_prediction.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Flood_prediction_training.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Load_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Save_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.old_data_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.water_level_prediction.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="Flood_prediction" />

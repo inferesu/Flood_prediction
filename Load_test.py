@@ -1,28 +1,30 @@
-import torch
+# final_minimal_loading_script.py
+# This script uses the developer's official method to load the saved model.
+
 import os
 from xanfis import GdAnfisRegressor
 
-MODEL_FILE = 'bug_report_model.json'
+# --- Configuration ---
+# This filename now matches the one in the saving script.
+MODEL_FILENAME = 'bug_report_model.pkl'
 
 def attempt_to_load_model():
-    """Attempts to load the saved model, demonstrating the bug."""
-    print(f"--- Attempting to load model from '{MODEL_FILE}' ---")
+    """Loads the saved model using the developer's official method."""
+    print(f"--- Attempting to load model from '{MODEL_FILENAME}' ---")
 
-    if not os.path.exists(MODEL_FILE):
-        print("Model file not found. Please run 'minimal_training_script.py' first.")
+    if not os.path.exists(MODEL_FILENAME):
+        print(f"❌ Model file not found. Please run 'final_minimal_training_script.py' first.")
         return
 
     try:
-        # 1. Create a new, empty model object.
-        model = GdAnfisRegressor()
-        # 2. Use the library's dedicated function to load the saved model.
-        # THIS IS THE LINE THAT WILL FAIL.
-        model.load_model(MODEL_FILE)
+        cls = GdAnfisRegressor
+        model = cls.load_model(load_path=".", filename="bug_report_model.pkl")
 
-        print("Model loaded without error.") # This line will likely not be reached.
+        print("\n✅ SUCCESS: Model loaded without error.")
+        print(f"   Model Type: {type(model)}")
 
     except Exception as e:
-        print(f"\nFAILED TO LOAD MODEL. This demonstrates the bug.")
+        print(f"\n❌ FAILED TO LOAD MODEL.")
         print(f"   Error Type: {type(e).__name__}")
         print(f"   Error Message: {e}")
         import traceback

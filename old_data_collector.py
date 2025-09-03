@@ -118,7 +118,7 @@ def main():
     print("\n✅ Pre-check successful. All stations are available.")
 
     # Set the date range to 2021-2023
-    start_date = datetime(2019, 1, 1)
+    start_date = datetime(2017, 1, 1)
     end_date = datetime(2019, 12, 31)
     print(f"\n--- Step 2: Starting Full Data Collection from {start_date.date()} to {end_date.date()} ---")
 
