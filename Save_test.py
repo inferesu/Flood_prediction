@@ -20,18 +20,17 @@ def create_and_save_minimal_model():
     data.X, scaler_X = data.scale(data.X, scaling_methods=("standard", "minmax"))
     data.y, scaler_y = data.scale(data.y.reshape(-1, 1), scaling_methods=("standard", "minmax"))
     data.y = data.y.flatten()
-    print("✅ Data created and scaled.")
+    print("Data created and scaled.")
 
     print("\n--- Step 2: Training a minimal model ---")
     model = GdAnfisRegressor(num_rules=5, mf_class="Trapezoidal", epochs=5, verbose=False)
     model.fit(X=data.X, y=data.y)
-    print("✅ Minimal model trained.")
+    print("Minimal model trained.")
 
-    print(f"\n--- Step 3: Saving model to '{MODEL_FILENAME}' ---")
     try:
         model.save_model(save_path=".", filename="bug_report_model.pkl")
     except Exception as e:
-        print(f"❌ An error occurred during saving: {e}")
+        print(f"An error occurred during saving: {e}")
 
 
 if __name__ == "__main__":

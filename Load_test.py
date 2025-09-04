@@ -6,15 +6,14 @@ from xanfis import GdAnfisRegressor
 
 # --- Configuration ---
 # This filename now matches the one in the saving script.
-MODEL_FILENAME = 'bug_report_model.pkl'
+# MODEL_FILENAME = 'bug_report_model.pkl'
 
 def attempt_to_load_model():
     """Loads the saved model using the developer's official method."""
-    print(f"--- Attempting to load model from '{MODEL_FILENAME}' ---")
 
-    if not os.path.exists(MODEL_FILENAME):
-        print(f"❌ Model file not found. Please run 'final_minimal_training_script.py' first.")
-        return
+    # if not os.path.exists(MODEL_FILENAME):
+    #     print(f"Model file not found.")
+    #     return
 
     try:
         cls = GdAnfisRegressor
