@@ -1,0 +1,15 @@
+{
+    "features_list": [
+        "precip_klaipedos_lag_12h",
+        "precip_klaipedos_lag_24h",
+        "precip_klaipedos_lag_48h",
+        "precip_klaipedos_lag_72h",
+        "precip_vezaiciu_lag_12h",
+        "precip_vezaiciu_lag_24h",
+        "precip_vezaiciu_lag_48h",
+        "precip_vezaiciu_lag_72h"
+    ],
+    "num_inputs": 8,
+    "num_mfs": 3,
+    "target": "target_change"
+}
