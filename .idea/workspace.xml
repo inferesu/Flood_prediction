@@ -5,8 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Evaluation_pytorch_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/New_data_colelctor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Evaluation_pytorch_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Evaluation_pytorch_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Flood_prediction_training.py" beforeDir="false" afterPath="$PROJECT_DIR$/Flood_prediction_training.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Prediction_training_pytorch.py" beforeDir="false" afterPath="$PROJECT_DIR$/Prediction_training_pytorch.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/anfis_model.pth" beforeDir="false" afterPath="$PROJECT_DIR$/anfis_model.pth" afterDir="false" />
     </list>

@@ -103,9 +103,8 @@ def train_and_save_model():
     print("\n--- Step 3: Define and Build ANFIS Model ---")
     num_inputs = len(FEATURES_LIST)
     model = build_anfis(num_inputs, NUM_MFS)
-    optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
     criterion = torch.nn.MSELoss()
-    print("✅ Model built with SGD optimizer.")
 
     print("\n--- Step 4: Training Loop ---")
     for epoch in range(EPOCHS):

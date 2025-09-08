@@ -10,7 +10,7 @@ from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
 # --- File Paths ---
-TEST_DATA_FILE = 'new_test.csv'
+TEST_DATA_FILE = 'test_data_2024.cs'
 MODEL_SAVE_PATH = "anfis_model.pth"  # Correct path to the saved model bundle
 SCALER_X_PATH = "scaler_X.pkl"
 SCALER_Y_PATH = "scaler_Y.pkl"
