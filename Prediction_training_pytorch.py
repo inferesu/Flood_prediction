@@ -29,7 +29,7 @@ BATCH_SIZE = 16
 EPOCHS = 200
 LR = 1e-3
 MOMENTUM = 0.9
-NUM_MFS = 3  # Membership functions per input
+NUM_MFS = 4  # Membership functions per input
 
 # --- Feature Engineering ---
 FEATURES_LIST = [
@@ -42,7 +42,6 @@ TARGET = 'target_change'
 
 
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Prepares features for the ANFIS model."""
     df = df.copy()
     df.sort_index(inplace=True)
     df.interpolate(method='time', inplace=True)
@@ -94,7 +93,7 @@ def train_and_save_model():
 
     joblib.dump(scaler_X, SCALER_X_PATH)
     joblib.dump(scaler_y, SCALER_Y_PATH)
-    print(f"✅ Scalers saved to {SCALER_X_PATH} and {SCALER_Y_PATH}")
+    print(f"Scalers saved to {SCALER_X_PATH} and {SCALER_Y_PATH}")
 
     x_train_tensor = torch.from_numpy(X_train_scaled).float()
     y_train_tensor = torch.from_numpy(y_train_scaled).float()
@@ -131,7 +130,7 @@ def train_and_save_model():
         'model_state_dict': model.state_dict(),
         'consequent_coeffs': model.coeff,
     }, MODEL_SAVE_PATH)
-    print(f"✅ Model and coefficients saved to {MODEL_SAVE_PATH}")
+    print(f"Model and coefficients saved to {MODEL_SAVE_PATH}")
 
     config = {
         "features_list": FEATURES_LIST,
@@ -141,7 +140,7 @@ def train_and_save_model():
     }
     with open(CONFIG_JSON_PATH, "w") as f:
         json.dump(config, f, indent=4)
-    print(f"✅ Training config saved to {CONFIG_JSON_PATH}")
+    print(f"Training config saved to {CONFIG_JSON_PATH}")
 
 
 if __name__ == "__main__":

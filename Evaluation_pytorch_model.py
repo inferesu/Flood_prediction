@@ -5,19 +5,16 @@ import torch
 import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
 
-# These imports are needed to define the model structure before loading its state
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
-# --- File Paths ---
-TEST_DATA_FILE = 'test_data_2024.cs'
+# Paths
+TEST_DATA_FILE = 'new_test.csv'
 MODEL_SAVE_PATH = "anfis_model.pth"  # Correct path to the saved model bundle
 SCALER_X_PATH = "scaler_X.pkl"
 SCALER_Y_PATH = "scaler_Y.pkl"
 CONFIG_JSON_PATH = "training_config.json"
 
-
-# --- Helper functions (must match training script) ---
 
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     """Prepares features for the ANFIS model."""
@@ -57,8 +54,6 @@ def build_anfis(num_inputs: int, num_mfs: int) -> AnfisNet:
 
 
 def evaluate_model():
-    """Main function to load artifacts and evaluate the model."""
-    print("--- Step 1: Load Test Data and Configuration ---")
     df_test = pd.read_csv(TEST_DATA_FILE, parse_dates=['timestamp'], index_col='timestamp')
     df_test = prepare_features(df_test)
 
@@ -70,15 +65,13 @@ def evaluate_model():
     X_test = df_test[features_list].values
     y_true_change = df_test[target].values
 
-    print("\n--- Step 2: Load Scalers ---")
     scaler_X = joblib.load(SCALER_X_PATH)
     scaler_y = joblib.load(SCALER_Y_PATH)
-    print("✅ Scalers loaded successfully.")
+    print("Scalers loaded successfully.")
 
     X_test_scaled = scaler_X.transform(X_test)
     x_test_tensor = torch.from_numpy(X_test_scaled).float()
 
-    print("\n--- Step 3: Rebuild Model and Load State ---")
     model = build_anfis(num_inputs=config["num_inputs"], num_mfs=config["num_mfs"])
 
     # Load the checkpoint dictionary
@@ -91,7 +84,7 @@ def evaluate_model():
     model.coeff = checkpoint['consequent_coeffs']
 
     model.eval()
-    print("✅ Model rebuilt and trained weights loaded.")
+    print("Model rebuilt and trained weights loaded.")
 
     print("\n--- Step 4: Make Predictions ---")
     with torch.no_grad():
