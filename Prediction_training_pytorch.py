@@ -18,7 +18,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 # --- File Paths ---
-TRAIN_DATA_FILE = 'minija_multi_precip_data_2010-2022.csv'
+TRAIN_DATA_FILE = 'minija_multi_precip_data_2015-2022.csv'
 MODEL_SAVE_PATH = "anfis_model.pth" # Changed to a more generic name
 SCALER_X_PATH = "scaler_X.pkl"
 SCALER_Y_PATH = "scaler_Y.pkl"

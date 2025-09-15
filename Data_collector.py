@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 
 # --- Configuration ---
-DATA_FILE = 'minija_multi_precip_data_2010-2022.csv'
+DATA_FILE = 'minija_multi_precip_data_2015-2022.csv'
 
 # Station codes based on API documentation and testing
 # SIMPLIFIED: Using the single 'priekules-vms' code which is now confirmed to work for all hydro endpoints.
@@ -118,7 +118,7 @@ def main():
     print("\n✅ Pre-check successful. All stations are available.")
 
     # Set the date range to 2021-2023
-    start_date = datetime(2010, 1, 1)
+    start_date = datetime(2015, 9, 15)
     end_date = datetime(2021, 12, 31)
     print(f"\n--- Step 2: Starting Full Data Collection from {start_date.date()} to {end_date.date()} ---")
 
