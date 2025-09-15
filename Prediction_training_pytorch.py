@@ -18,7 +18,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 # --- File Paths ---
-TRAIN_DATA_FILE = 'minija_multi_precip_data_2020-2023.csv'
+TRAIN_DATA_FILE = 'minija_multi_precip_data_2010-2022.csv'
 MODEL_SAVE_PATH = "anfis_model.pth" # Changed to a more generic name
 SCALER_X_PATH = "scaler_X.pkl"
 SCALER_Y_PATH = "scaler_Y.pkl"
@@ -29,7 +29,7 @@ BATCH_SIZE = 16
 EPOCHS = 200
 LR = 1e-3
 MOMENTUM = 0.9
-NUM_MFS = 4  # Membership functions per input
+NUM_MFS = 3  # Membership functions per input
 
 # --- Feature Engineering ---
 FEATURES_LIST = [
