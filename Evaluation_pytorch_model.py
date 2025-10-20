@@ -18,7 +18,7 @@ SCALER_X_PATH = "scaler_X.pkl"
 SCALER_Y_PATH = "scaler_Y.pkl"
 SCALER_ERROR_PATH = "scaler_error.pkl"
 CONFIG_JSON_PATH = "training_config.json"
-TEST_DATA_FILE = 'new_test.csv'
+TEST_DATA_FILE = 'live_data.csv'
 
 # --- RNN Configuration ---
 SEQUENCE_LENGTH = 24
