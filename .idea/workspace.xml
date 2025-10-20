@@ -5,7 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/RNN_Predictor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Forecaster.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Historical_forecast_collector.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Live_forecaster.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/RNN_error_correction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Weather_collector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Evaluation_pytorch_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Evaluation_pytorch_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,10 +55,15 @@
     "Python.Evaluation_pytorch_model.executor": "Run",
     "Python.Flood_prediction.executor": "Run",
     "Python.Flood_prediction_training.executor": "Run",
+    "Python.Forecaster.executor": "Run",
+    "Python.Historical_forecast_collector.executor": "Run",
+    "Python.Live_forecaster.executor": "Run",
     "Python.Load_test.executor": "Run",
     "Python.New_data_colelctor.executor": "Run",
     "Python.Prediction_training_pytorch.executor": "Run",
+    "Python.RNN_error_correction.executor": "Run",
     "Python.Save_test.executor": "Run",
+    "Python.Weather_collector.executor": "Run",
     "Python.old_data_collector.executor": "Run",
     "Python.water_level_prediction.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
