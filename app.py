@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime, timedelta
 
 import joblib
@@ -27,10 +28,9 @@ PREDICTIONS_LOG_PATH = "predictions_log.json"
 STATION_CODE_HYDRO = 'priekules-vms'
 STATION_CODE_METEO_1 = 'klaipedos-ams'
 STATION_CODE_METEO_2 = 'vezaiciu-ams'
-NUM_DAYS_TO_FETCH = 5
 
 
-# --- Data Fetching Logic ---
+# --- Data Collection Logic ---
 def fetch_recent_water_level(station_code, date):
     date_str = date.strftime("%Y-%m-%d")
     url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
@@ -39,8 +39,9 @@ def fetch_recent_water_level(station_code, date):
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
         observations = resp.json().get("observations", [])
-        levels = [obs['waterLevel'] for obs in observations if obs.get('waterLevel') is not None]
-        if levels: return round(sum(levels) / len(levels), 2)
+        water_levels = [obs['waterLevel'] for obs in observations if obs.get('waterLevel') is not None]
+        if water_levels:
+            return round(sum(water_levels) / len(water_levels), 2)
     except requests.RequestException as e:
         print(f"   - ❌ Error fetching water level: {e}")
     return None
@@ -54,50 +55,60 @@ def fetch_recent_precipitation(station_code, date):
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
         observations = resp.json().get("observations", [])
-        precip = sum(obs.get('precipitation', 0) for obs in observations if obs.get('precipitation') is not None)
-        return round(precip, 2)
+        daily_precip = sum(obs.get('precipitation', 0) for obs in observations if obs.get('precipitation') is not None)
+        return round(daily_precip, 2)
     except requests.RequestException as e:
         print(f"   - ❌ Error fetching precipitation: {e}")
     return 0
 
 
 def update_data_file():
-    print("--- Starting data collection ---")
-    all_days_data = []
-    for days_ago in range(NUM_DAYS_TO_FETCH, -1, -1):
-        current_date = datetime.now().date() - timedelta(days=days_ago)
-        water_level = fetch_recent_water_level(STATION_CODE_HYDRO, current_date)
-        precip1 = fetch_recent_precipitation(STATION_CODE_METEO_1, current_date)
-        precip2 = fetch_recent_precipitation(STATION_CODE_METEO_2, current_date)
-        if water_level is not None:
-            all_days_data.append({
-                'timestamp': current_date.strftime("%Y-%m-%d"),
-                'water_level_cm': water_level,
-                'precip_klaipedos-ams_mm': precip1,
-                'precip_vezaiciu-ams_mm': precip2
-            })
-    if all_days_data:
-        pd.DataFrame(all_days_data).to_csv(DATA_FILE, index=False)
-        print(f"✅ --- Data file '{DATA_FILE}' updated. ---")
+    yesterday = datetime.now().date() - timedelta(days=1)
+    yesterday_str = yesterday.strftime("%Y-%m-%d")
+
+    if os.path.exists(DATA_FILE):
+        df_existing = pd.read_csv(DATA_FILE)
+        if yesterday_str in df_existing['timestamp'].values:
+            print(f"✅ Data for {yesterday_str} already exists. No update needed.")
+            return
+    else:
+        print(f"File '{DATA_FILE}' not found. Creating it.")
+        pd.DataFrame(
+            columns=['timestamp', 'water_level_cm', 'precip_klaipedos-ams_mm', 'precip_vezaiciu-ams_mm']).to_csv(
+            DATA_FILE, index=False)
+
+    print(f"--- Collecting data for {yesterday_str} ---")
+    water_level = fetch_recent_water_level(STATION_CODE_HYDRO, yesterday)
+    precip1 = fetch_recent_precipitation(STATION_CODE_METEO_1, yesterday)
+    time.sleep(0.5)
+    precip2 = fetch_recent_precipitation(STATION_CODE_METEO_2, yesterday)
+
+    if water_level is None:
+        print(f"❌ Could not fetch water level for {yesterday_str}. Aborting update.")
+        return
+
+    new_data = pd.DataFrame(
+        [{'timestamp': yesterday_str, 'water_level_cm': water_level, 'precip_klaipedos-ams_mm': precip1,
+          'precip_vezaiciu-ams_mm': precip2}])
+    new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
+    print(f"✅ --- Successfully added data for {yesterday_str} to '{DATA_FILE}'. ---")
 
 
-# --- Feature Engineering & Model Building ---
+# --- Feature Engineering ---
 def prepare_features(df: pd.DataFrame):
-    """
-    Correctly prepares features using daily data to prevent inflated precipitation values.
-    """
     df = df.copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df = df.set_index('timestamp').asfreq('D').ffill()  # Ensure daily frequency
 
-    # Calculate rolling sums based on DAYS, not hours
+    # --- THIS IS THE FIX ---
+    # Drop duplicates, keeping the last entry for each date to ensure a unique index
+    df = df.drop_duplicates(subset='timestamp', keep='last')
+
+    df = df.set_index('timestamp').asfreq('D').ffill()
+
     for station in ['klaipedos', 'vezaiciu']:
-        # 12h/24h lag = last 1 day's total
         df[f'precip_{station}_lag_12h'] = df[f'precip_{station}-ams_mm'].rolling(window=1, min_periods=1).sum()
         df[f'precip_{station}_lag_24h'] = df[f'precip_{station}-ams_mm'].rolling(window=1, min_periods=1).sum()
-        # 48h lag = sum of last 2 days
         df[f'precip_{station}_lag_48h'] = df[f'precip_{station}-ams_mm'].rolling(window=2, min_periods=1).sum()
-        # 72h lag = sum of last 3 days
         df[f'precip_{station}_lag_72h'] = df[f'precip_{station}-ams_mm'].rolling(window=3, min_periods=1).sum()
 
     return df
@@ -109,13 +120,13 @@ def build_anfis(num_inputs: int, num_mfs: int):
     return AnfisNet('Flood Prediction Model', invardefs, ['y'], hybrid=True)
 
 
-# --- Main Route to Serve the Dashboard ---
+# --- Main Route ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
-# --- API Endpoint for Prediction ---
+# --- API Endpoint ---
 @app.route('/api/predict')
 def predict_api():
     update_data_file()
@@ -133,8 +144,21 @@ def predict_api():
     anfis_model.coeff = checkpoint['consequent_coeffs']
     anfis_model.eval()
 
-    df_raw = pd.read_csv(DATA_FILE)
-    features_df = prepare_features(df_raw)
+    print("--- Fetching today's live data for prediction ---")
+    today = datetime.now().date()
+    live_water_level = fetch_recent_water_level(STATION_CODE_HYDRO, today)
+    live_precip1 = fetch_recent_precipitation(STATION_CODE_METEO_1, today)
+    live_precip2 = fetch_recent_precipitation(STATION_CODE_METEO_2, today)
+
+    if live_water_level is None:
+        return jsonify({"error": "Could not fetch live water level data."}), 500
+
+    df_hist = pd.read_csv(DATA_FILE)
+    live_row = pd.DataFrame([{'timestamp': today.strftime("%Y-%m-%d"), 'water_level_cm': live_water_level,
+                              'precip_klaipedos-ams_mm': live_precip1, 'precip_vezaiciu-ams_mm': live_precip2}])
+    df_combined = pd.concat([df_hist, live_row], ignore_index=True)
+
+    features_df = prepare_features(df_combined)
 
     last_row = features_df.iloc[-1:]
     last_known_level = last_row['water_level_cm'].iloc[0]
@@ -149,15 +173,14 @@ def predict_api():
 
     predicted_next_day_level = last_known_level + predicted_change
 
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    today_str = today.strftime("%Y-%m-%d")
+    tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
     log_data = {}
     if os.path.exists(PREDICTIONS_LOG_PATH):
         with open(PREDICTIONS_LOG_PATH, 'r') as f:
             try:
                 log_data = json.load(f)
             except json.JSONDecodeError:
-                print("Warning: predictions_log.json was corrupted. Starting fresh.")
                 log_data = {}
 
     log_data.setdefault(today_str, {})['actual'] = last_known_level
