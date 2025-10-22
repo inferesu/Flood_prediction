@@ -98,25 +98,18 @@ def update_data_file():
 def prepare_features(df: pd.DataFrame):
     df = df.copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-
-    # --- THIS IS THE FIX ---
-    # Drop duplicates, keeping the last entry for each date to ensure a unique index
     df = df.drop_duplicates(subset='timestamp', keep='last')
-
     df = df.set_index('timestamp').asfreq('D').ffill()
-
     for station in ['klaipedos', 'vezaiciu']:
         df[f'precip_{station}_lag_12h'] = df[f'precip_{station}-ams_mm'].rolling(window=1, min_periods=1).sum()
         df[f'precip_{station}_lag_24h'] = df[f'precip_{station}-ams_mm'].rolling(window=1, min_periods=1).sum()
         df[f'precip_{station}_lag_48h'] = df[f'precip_{station}-ams_mm'].rolling(window=2, min_periods=1).sum()
         df[f'precip_{station}_lag_72h'] = df[f'precip_{station}-ams_mm'].rolling(window=3, min_periods=1).sum()
-
     return df
 
 
 def build_anfis(num_inputs: int, num_mfs: int):
-    invardefs = [(f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]) for i in
-                 range(num_inputs)]
+    invardefs = [(f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]) for i in range(num_inputs)]
     return AnfisNet('Flood Prediction Model', invardefs, ['y'], hybrid=True)
 
 
@@ -131,8 +124,7 @@ def index():
 def predict_api():
     update_data_file()
 
-    with open(CONFIG_JSON_PATH, "r") as f:
-        config = json.load(f)
+    with open(CONFIG_JSON_PATH, "r") as f: config = json.load(f)
     features_list = config["features_list"]
 
     scaler_X = joblib.load(SCALER_X_PATH)
@@ -154,8 +146,7 @@ def predict_api():
         return jsonify({"error": "Could not fetch live water level data."}), 500
 
     df_hist = pd.read_csv(DATA_FILE)
-    live_row = pd.DataFrame([{'timestamp': today.strftime("%Y-%m-%d"), 'water_level_cm': live_water_level,
-                              'precip_klaipedos-ams_mm': live_precip1, 'precip_vezaiciu-ams_mm': live_precip2}])
+    live_row = pd.DataFrame([{'timestamp': today.strftime("%Y-%m-%d"), 'water_level_cm': live_water_level, 'precip_klaipedos-ams_mm': live_precip1, 'precip_vezaiciu-ams_mm': live_precip2}])
     df_combined = pd.concat([df_hist, live_row], ignore_index=True)
 
     features_df = prepare_features(df_combined)
@@ -173,6 +164,7 @@ def predict_api():
 
     predicted_next_day_level = last_known_level + predicted_change
 
+    # --- THIS IS THE CORRECTED LOGIC ---
     today_str = today.strftime("%Y-%m-%d")
     tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
     log_data = {}
@@ -183,11 +175,20 @@ def predict_api():
             except json.JSONDecodeError:
                 log_data = {}
 
+    # Update today's 'actual' value regardless, as it's fresh data.
     log_data.setdefault(today_str, {})['actual'] = last_known_level
-    log_data.setdefault(tomorrow_str, {})['predicted'] = predicted_next_day_level
+
+    # ONLY add a prediction for tomorrow IF one doesn't already exist.
+    # This protects your manual entries.
+    if 'predicted' not in log_data.get(tomorrow_str, {}):
+        log_data.setdefault(tomorrow_str, {})['predicted'] = predicted_next_day_level
+        print(f"✅ Added new prediction for {tomorrow_str}.")
+    else:
+        print(f"✅ Prediction for {tomorrow_str} already exists. Manual entry protected.")
 
     with open(PREDICTIONS_LOG_PATH, 'w') as f:
         json.dump(log_data, f, indent=4)
+    # --- END OF CORRECTED LOGIC ---
 
     def get_safe_float(series, key, default=0.0):
         val = series.get(key)
@@ -200,22 +201,15 @@ def predict_api():
         "precip_vezaiciu_lag_72h": get_safe_float(last_row, 'precip_vezaiciu_lag_72h'),
     }
 
-    if predicted_next_day_level < 250:
-        risk_level = 'LOW'
-    elif predicted_next_day_level < 400:
-        risk_level = 'MODERATE'
-    elif predicted_next_day_level < 550:
-        risk_level = 'HIGH'
-    else:
-        risk_level = 'SEVERE'
+    if predicted_next_day_level < 250: risk_level = 'LOW'
+    elif predicted_next_day_level < 400: risk_level = 'MODERATE'
+    elif predicted_next_day_level < 550: risk_level = 'HIGH'
+    else: risk_level = 'SEVERE'
 
     trend_diff = predicted_next_day_level - last_known_level
-    if trend_diff > 10:
-        trend_text = 'Rising'
-    elif trend_diff < -10:
-        trend_text = 'Falling'
-    else:
-        trend_text = 'Stable'
+    if trend_diff > 10: trend_text = 'Rising'
+    elif trend_diff < -10: trend_text = 'Falling'
+    else: trend_text = 'Stable'
 
     historical_data = [{'date': k, **v} for k, v in sorted(log_data.items())]
 
@@ -229,6 +223,5 @@ def predict_api():
         "lastUpdated": datetime.now().isoformat()
     })
 
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
