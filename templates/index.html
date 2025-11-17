@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minijos River - Live Flood Risk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+
+    <style>
+        /* 2. Changed the font-family to 'Lato' */
+        body { font-family: 'Lato', sans-serif; }
+        .card { background-color: #1E293B; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
+        .risk-low { background-color: #059669; color: white; }
+        .risk-moderate { background-color: #D97706; color: white; }
+        .risk-high { background-color: #DC2626; color: white; }
+        .risk-severe { background-color: #7E22CE; color: white; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white">Minijos River Flood Risk</h1>
+            <p class="text-slate-400 mt-2">Live daily forecast powered by an ANFIS AI Model</p>
+        </header>
+
+        <main class="grid grid-cols-1 gap-6">
+            <div id="risk-card" class="card text-center flex flex-col items-center justify-center p-6">
+                <div id="risk-icon" class="mb-4"></div>
+                <h2 class="text-lg font-semibold text-slate-300 uppercase tracking-wider">Forecast Risk Level</h2>
+                <p id="risk-level" class="text-5xl font-bold mt-1">Loading...</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-slate-300">Current Water Level</h3>
+                        <p id="current-level" class="text-4xl font-bold text-white mt-2">-- cm</p>
+                    </div>
+                    <div class="text-blue-400"><svg width="48px" height="48px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M2.5 5.5L3.11612 6.11612C3.68206 6.68206 4.44964 7 5.25 7C6.05036 7 6.81794 6.68206 7.38388 6.11612L7.61612 5.88388C8.18206 5.31794 8.94964 5 9.75 5C10.5504 5 11.3179 5.31794 11.8839 5.88388L12.1161 6.11612C12.6821 6.68206 13.4496 7 14.25 7C15.0504 7 15.8179 6.68206 16.3839 6.11612L16.6161 5.88388C17.1821 5.31794 17.9496 5 18.75 5C19.5504 5 20.3179 5.31794 20.8839 5.88388L21.5 6.5M2.5 11.5L3.11612 12.1161C3.68206 12.6821 4.44964 13 5.25 13C6.05036 13 6.81794 12.6821 7.38388 12.1161L7.61612 11.8839C8.18206 11.3179 8.94964 11 9.75 11C10.5504 11 11.3179 11.3179 11.8839 11.8839L12.1161 12.1161C12.6821 12.6821 13.4496 13 14.25 13C15.0504 13 15.8179 12.6821 16.3839 12.1161L16.6161 11.8839C17.1821 11.3179 17.9496 11 18.75 11C19.5504 11 20.3179 11.3179 20.8839 11.8839L21.5 12.5M2.5 17.5L3.11612 18.1161C3.68206 18.6821 4.44964 19 5.25 19C6.05036 19 6.81794 18.6821 7.38388 18.1161L7.61612 17.8839C8.18206 17.3179 8.94964 17 9.75 17C10.5504 17 11.3179 17.3179 11.8839 17.8839L12.1161 18.1161C12.6821 18.6821 13.4496 19 14.25 19C15.0504 19 15.8179 18.6821 16.3839 18.1161L16.6161 17.8839C17.1821 17.3179 17.9496 17 18.75 17C19.5504 17 20.3179 17.3179 20.8839 17.8839L21.5 18.5" stroke="#63D7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></div>
+                </div>
+                <div class="card flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-slate-300">Next Day Trend</h3>
+                        <p id="trend-text" class="text-4xl font-bold text-white mt-2">--</p>
+                    </div>
+                    <div id="trend-icon" class="text-gray-500"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="font-semibold text-slate-300 mb-4">Historical & Predicted Water Levels</h3>
+                <div class="h-64 md:h-80"><canvas id="forecast-chart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h3 class="font-semibold text-slate-300 mb-4">Live Data (Model Inputs)</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                    <div><p class="text-sm text-slate-400">Klaipėda Precip (24h)</p><p id="precip-klaipeda-24h" class="text-xl font-semibold mt-1">-- mm</p></div>
+                    <div><p class="text-sm text-slate-400">Vėžaičiai Precip (24h)</p><p id="precip-vezaiciai-24h" class="text-xl font-semibold mt-1">-- mm</p></div>
+                    <div><p class="text-sm text-slate-400">Klaipėda Precip (72h)</p><p id="precip-klaipeda-72h" class="text-xl font-semibold mt-1">-- mm</p></div>
+                    <div><p class="text-sm text-slate-400">Vėžaičiai Precip (72h)</p><p id="precip-vezaiciai-72h" class="text-xl font-semibold mt-1">-- mm</p></div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="text-sm text-slate-500 mb-4">Last updated: <span id="last-updated">Never</span></p>
+                <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 flex items-center justify-center mx-auto">
+                    <span id="refresh-btn-text">Refresh Forecast</span>
+                    <div id="loader" class="loader ml-3 hidden"></div>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const ui = {
+            riskCard: document.getElementById('risk-card'), riskIcon: document.getElementById('risk-icon'),
+            riskLevel: document.getElementById('risk-level'), currentLevel: document.getElementById('current-level'),
+            trendText: document.getElementById('trend-text'), trendIcon: document.getElementById('trend-icon'),
+            lastUpdated: document.getElementById('last-updated'), refreshBtn: document.getElementById('refresh-btn'),
+            refreshBtnText: document.getElementById('refresh-btn-text'), loader: document.getElementById('loader'),
+            precipKlaipeda24h: document.getElementById('precip-klaipeda-24h'),
+            precipVezaiciai24h: document.getElementById('precip-vezaiciai-24h'),
+            precipKlaipeda72h: document.getElementById('precip-klaipeda-72h'),
+            precipVezaiciai72h: document.getElementById('precip-vezaiciai-72h'),
+            chartCanvas: document.getElementById('forecast-chart'),
+        };
+        let forecastChart = null;
+
+        // --- Icon & Style Maps ---
+        const icons = {
+            LOW: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+            MODERATE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
+            HIGH: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
+            SEVERE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H9.5a2 2 0 0 0-2 2v1c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V4a2 2 0 0 0-2-2z"/><path d="M12 6V3"/><path d="M12 18a6 6 0 0 0 6-6 4.5 4.5 0 0 0-4.5-4.5c-2.8 0-4.4 2.3-4.5 4.5A6 6 0 0 0 12 18z"/><path d="M15.5 8.5 18 6"/><path d="m6 18 3-3"/><path d="M6 6l2.5 2.5"/><path d="m18 18-3-3"/></svg>',
+            Rising: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><line x1="12" x2="12" y1="19" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+            Falling: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><line x1="12" x2="12" y1="5" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+            Stable: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><line x1="5" x2="19" y1="12" y2="12"/></svg>'
+        };
+        const riskClassMap = { LOW: 'risk-low', MODERATE: 'risk-moderate', HIGH: 'risk-high', SEVERE: 'risk-severe' };
+
+        // --- UI Update Function ---
+        function updateUI(data) {
+            ui.riskCard.className = `card text-center flex flex-col items-center justify-center p-6 ${riskClassMap[data.risk.level]}`;
+            ui.riskIcon.innerHTML = icons[data.risk.level];
+            ui.riskLevel.textContent = data.risk.level;
+            ui.currentLevel.textContent = `${data.lastKnownLevel.toFixed(1)} cm`;
+            ui.trendText.textContent = data.trend.text;
+            ui.trendIcon.innerHTML = icons[data.trend.text];
+            ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString('lt-LT');
+
+            ui.precipKlaipeda24h.textContent = `${data.liveFeatures.precip_klaipedos_lag_24h.toFixed(1)} mm`;
+            ui.precipVezaiciai24h.textContent = `${data.liveFeatures.precip_vezaiciu_lag_24h.toFixed(1)} mm`;
+            ui.precipKlaipeda72h.textContent = `${data.liveFeatures.precip_klaipedos_lag_72h.toFixed(1)} mm`;
+            ui.precipVezaiciai72h.textContent = `${data.liveFeatures.precip_vezaiciu_lag_72h.toFixed(1)} mm`;
+
+            // --- Update Chart ---
+            const labels = data.historicalData.map(d => new Date(d.date).toLocaleDateString('lt-LT', { month: 'short', day: 'numeric' }));
+            const actualData = data.historicalData.map(d => d.actual ?? null);
+            const predictedData = data.historicalData.map(d => d.predicted ?? null);
+
+            if (forecastChart) forecastChart.destroy();
+
+            forecastChart = new Chart(ui.chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Actual Water Level (cm)', data: actualData, borderColor: '#3B82F6', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#3B82F6', tension: 0.1 },
+                        { label: 'Predicted Water Level (cm)', data: predictedData, borderColor: '#EF4444', borderDash: [5, 5], borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#EF4444', tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#E2E8F0', font: { size: 14 } } } }
+                }
+            });
+        }
+
+        // --- Main Execution Logic ---
+        async function runForecast() {
+            ui.refreshBtn.disabled = true;
+            ui.refreshBtnText.classList.add('hidden');
+            ui.loader.classList.remove('hidden');
+            try {
+                const response = await fetch('/api/predict');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const forecastData = await response.json();
+                updateUI(forecastData);
+            } catch (error) {
+                console.error("Failed to get forecast:", error);
+                alert("Could not retrieve the forecast. Check the console for details.");
+            } finally {
+                ui.refreshBtn.disabled = false;
+                ui.refreshBtnText.classList.remove('hidden');
+                ui.loader.classList.add('hidden');
+            }
+        }
+
+        // --- Event Listeners and Timers ---
+        ui.refreshBtn.addEventListener('click', runForecast);
+        document.addEventListener('DOMContentLoaded', runForecast);
+        setInterval(runForecast, 3600 * 1000); // Auto-refresh every hour
+
+    </script>
+
+</body>
+</html>

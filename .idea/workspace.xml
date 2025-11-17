@@ -4,10 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
+<<<<<<< Updated upstream
+    <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="" />
+=======
     <list default="true" id="5fd2cfc4-4cd4-4f82-b4d5-48a5cae1a6ef" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2025new_test.csv" beforeDir="false" afterPath="$PROJECT_DIR$/2025new_test.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/predictions_log.json" beforeDir="false" afterPath="$PROJECT_DIR$/predictions_log.json" afterDir="false" />
     </list>
+>>>>>>> Stashed changes
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,6 +20,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="HTML File" />
         <option value="Python Script" />
       </list>
     </option>
@@ -44,22 +49,29 @@
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
     &quot;Python.ANFIS_results_visualizer.executor&quot;: &quot;Run&quot;,
     &quot;Python.Data_collector.executor&quot;: &quot;Run&quot;,
     &quot;Python.Evaluation_pytorch_model.executor&quot;: &quot;Run&quot;,
     &quot;Python.Flood_prediction.executor&quot;: &quot;Run&quot;,
     &quot;Python.Flood_prediction_training.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Forecaster.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Historical_forecast_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Live_forecaster.executor&quot;: &quot;Run&quot;,
     &quot;Python.Load_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.New_data_colelctor.executor&quot;: &quot;Run&quot;,
     &quot;Python.Prediction_training_pytorch.executor&quot;: &quot;Run&quot;,
+    &quot;Python.RNN_error_correction.executor&quot;: &quot;Run&quot;,
     &quot;Python.Save_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Weather_collector.executor&quot;: &quot;Run&quot;,
+    &quot;Python.app.executor&quot;: &quot;Run&quot;,
     &quot;Python.old_data_collector.executor&quot;: &quot;Run&quot;,
     &quot;Python.water_level_prediction.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;Frontend&quot;,
     &quot;last_opened_file_path&quot;: &quot;/Users/anastasija.safonova/PycharmProjects/Flood_prediction&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
