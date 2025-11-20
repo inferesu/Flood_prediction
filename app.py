@@ -28,8 +28,7 @@ app = Flask(__name__)
 # --- GLOBAL LLM SETUP ---
 GEMINI_MODEL = 'gemini-2.0-flash'
 try:
-    # REPLACE "os.environ.get..." WITH YOUR ACTUAL KEY STRING IF NEEDED
-    # e.g. client = genai.Client(api_key="AIzaSy...")
+    # Ensure your API Key is set in environment variables or paste it here
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 except Exception as e:
     print(f"LLM Initialization Warning: {e}")
@@ -72,14 +71,27 @@ RIVER_CONFIGS = {"minija": MINIJA_CONFIG, "dane": DANE_CONFIG}
 # --- Data & Feature Logic ---
 
 def fetch_recent_water_level(station_code, date):
+    """
+    Fetches the absolute LATEST available water level observation
+    regardless of time of day.
+    """
     date_str = date.strftime("%Y-%m-%d")
     url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
     try:
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
         observations = resp.json().get("observations", [])
-        water_levels = [obs['waterLevel'] for obs in observations if obs.get('waterLevel') is not None]
-        if water_levels: return round(sum(water_levels) / len(water_levels), 2)
+
+        # Filter for valid readings
+        valid_obs = [obs for obs in observations if obs.get('waterLevel') is not None]
+
+        if valid_obs:
+            # Sort by time and take the last one (Latest Snapshot)
+            latest_obs = max(valid_obs, key=lambda x: x.get('observationTimeUTC', ''))
+            level = latest_obs['waterLevel']
+            print(f"   -> 💧 Latest Snapshot for {station_code}: {level} cm at {latest_obs.get('observationTimeUTC')}")
+            return round(level, 2)
+
     except Exception as e:
         print(f"   - Error water level: {e}")
     return None
@@ -111,7 +123,7 @@ def update_data_file(config: dict):
         cols = ['timestamp', 'water_level_cm'] + [f'precip_{c}_mm' for c in config['meteo_stations_codes']]
         pd.DataFrame(columns=cols).to_csv(data_file, index=False)
 
-    print(f"--- Collecting data for {config['name']} ---")
+    print(f"--- Collecting historical data for {config['name']} ---")
     wl = fetch_recent_water_level(config['hydro_station'], yesterday)
     precip = {f'precip_{c}_mm': fetch_recent_precipitation(c, yesterday) for c in config['meteo_stations_codes']}
 
@@ -123,6 +135,7 @@ def update_data_file(config: dict):
 def prepare_features(df, config):
     df = df.copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
+    # Ensure we keep the last entry per day, then fill gaps
     df = df.drop_duplicates(subset='timestamp', keep='last').set_index('timestamp').asfreq('D').ffill()
     for s in config['meteo_stations_short']:
         c = f'precip_{s}-ams_mm'
@@ -153,14 +166,15 @@ def generate_gemini_report(config, current_level, predicted_change, projected_le
 
     prompt = f"""
     Act as a Hydrology Analyst for the {config['display_name']} river.
-    Data:
-    - Current Level: {current_level:.2f} cm
-    - 24h Rain: {rain_24h:.2f} mm
-    - Forecast Change: {predicted_change:+.2f} cm
-    - Forecast Level: {projected_level:.2f} cm
+
+    LIVE TELEMETRY:
+    - Current Water Level: {current_level:.2f} cm (Latest Sensor Reading)
+    - Past 24h Rainfall: {rain_24h:.2f} mm
+    - Forecast Change (Next 24h): {predicted_change:+.2f} cm
+    - Projected Level: {projected_level:.2f} cm
     - Risk Category: {risk_level}
 
-    Write a concise 2-sentence update for local residents. Mention the trend (rising/falling) and safety advice if needed.
+    Write a short, 2-sentence alert for local residents. Explicitly mention if the water is currently RISING, FALLING, or STABLE based on the forecast.
     """
     try:
         res = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
@@ -184,32 +198,55 @@ def run_prediction_job(config):
         model.eval()
 
         today = datetime.now().date()
+        # GET LIVE DATA
         live_wl = fetch_recent_water_level(config["hydro_station"], today)
         live_precip = {f'precip_{c}_mm': fetch_recent_precipitation(c, today) for c in config['meteo_stations_codes']}
 
-        if live_wl is None: return
+        if live_wl is None:
+            print("❌ No live water level found.")
+            return
 
+        # COMBINE HISTORY + LIVE
         df_hist = pd.read_csv(config["data_file"])
         live_row = pd.DataFrame([{'timestamp': today.strftime("%Y-%m-%d"), 'water_level_cm': live_wl, **live_precip}])
         df_comb = pd.concat([df_hist, live_row], ignore_index=True)
+
+        # PREPARE FEATURES
         features_df = prepare_features(df_comb, config)
-
         last_row = features_df.iloc[-1:]
-        X_unscaled = last_row[model_config["features_list"]].values
-        if np.isnan(X_unscaled).any(): return
 
+        # EXTRACT MODEL INPUTS
+        features_list = model_config["features_list"]
+        X_unscaled = last_row[features_list].values
+
+        # --- FORCE INJECTION OF LATEST WATER LEVEL ---
+        # This ensures that even if Pandas averaged something, we overwrite it with the live snapshot
+        if "water_level_cm" in features_list:
+            idx = features_list.index("water_level_cm")
+            print(f"   ⚠️  DEBUG: Overwriting input feature index {idx} with live value: {live_wl}")
+            X_unscaled[0, idx] = live_wl
+
+        print(f"   -> MODEL INPUT TENSOR (Unscaled): {X_unscaled}")
+
+        if np.isnan(X_unscaled).any():
+            print("❌ NaN in features. Aborting.")
+            return
+
+        # RUN PREDICTION
         X_scaled = scaler_X.transform(X_unscaled)
         with torch.no_grad():
-            pred_chg = scaler_y.inverse_transform(model(torch.from_numpy(X_scaled).float()).numpy())[0, 0]
+            pred_chg_scaled = model(torch.from_numpy(X_scaled).float())
+            pred_chg = scaler_y.inverse_transform(pred_chg_scaled.numpy())[0, 0]
 
+        # CALC FINAL LEVEL: Live Level + Predicted Change
         pred_level = live_wl + pred_chg
 
-        # Generate Report
-        rain_col = [c for c in model_config["features_list"] if 'lag_24h' in c]
+        # GENERATE REPORT
+        rain_col = [c for c in features_list if 'lag_24h' in c]
         rain_24h = last_row[rain_col[0]].iloc[0] if rain_col else 0
         report = generate_gemini_report(config, live_wl, pred_chg, pred_level, rain_24h)
 
-        # Log
+        # LOG RESULTS
         today_str = today.strftime("%Y-%m-%d")
         tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         log_data = {}
@@ -218,11 +255,11 @@ def run_prediction_job(config):
 
         log_data.setdefault(today_str, {})['actual'] = live_wl
         log_data.setdefault(tomorrow_str, {})['predicted'] = pred_level
-        log_data.setdefault(tomorrow_str, {})['report'] = report  # Save LLM report
+        log_data.setdefault(tomorrow_str, {})['report'] = report
 
         with open(config["predictions_log_path"], 'w') as f:
             json.dump(log_data, f, indent=4)
-        print(f"✅ {config['name']} Updated. Report generated.")
+        print(f"✅ {config['name']} Forecast Updated: {live_wl} -> {pred_level:.2f}")
 
     except Exception as e:
         print(f"❌ Error {config['name']}: {e}")
@@ -261,7 +298,7 @@ def get_data_api():
         ai_report = log_data.get(tomorrow_str, {}).get('report', "No report available.")
         actual_level = log_data.get(today_str, {}).get('actual', 0)
 
-        # Re-read live features for UI (simplified)
+        # Re-read live features for UI
         df = pd.read_csv(config["data_file"])
         df_feats = prepare_features(df, config)
         last_row = df_feats.iloc[-1:]
