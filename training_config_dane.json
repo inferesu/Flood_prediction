@@ -1,0 +1,11 @@
+{
+    "features_list": [
+        "precip_klaipedos_lag_12h",
+        "precip_klaipedos_lag_24h",
+        "precip_klaipedos_lag_48h",
+        "precip_klaipedos_lag_72h"
+    ],
+    "num_inputs": 4,
+    "num_mfs": 3,
+    "target": "target_change"
+}
