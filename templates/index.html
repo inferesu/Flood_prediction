@@ -6,11 +6,7 @@
     <title>Live River Flood Risk</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Lato', sans-serif; }
         .card { background-color: #1E293B; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
@@ -20,15 +16,7 @@
         .risk-severe { background-color: #7E22CE; color: white; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Custom style for select dropdown */
-        select.river-select {
-            background-color: #334155;
-            color: #E2E8F0;
-            border: 1px solid #475569;
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            font-weight: 600;
-        }
+        select.river-select { background-color: #334155; color: #E2E8F0; border: 1px solid #475569; border-radius: 0.5rem; padding: 0.5rem 1rem; font-weight: 600; }
     </style>
 </head>
 <body class="bg-slate-900 text-gray-200">
@@ -37,9 +25,7 @@
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-white">River Flood Risk</h1>
             <p class="text-slate-400 mt-2">Live daily forecast powered by an ANFIS AI Model</p>
-
             <div class="mt-6">
-                <label for="river-select" class="sr-only">Select River:</label>
                 <select id="river-select" class="river-select">
                     <option value="minija">Minija (Priekulė)</option>
                     <option value="dane">Danė (Klaipėda)</option>
@@ -54,15 +40,27 @@
                 <p id="risk-level" class="text-5xl font-bold mt-1">Loading...</p>
             </div>
 
+            <div class="card border-l-4 border-purple-500 bg-slate-800/50">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 bg-purple-900/30 rounded-lg text-purple-400 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-1">AI Hydrology Analyst</h3>
+                        <p id="ai-report-text" class="text-slate-300 text-base leading-relaxed">
+                            Initializing analysis...
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="card flex items-center justify-between">
                     <div>
                         <h3 class="font-semibold text-slate-300">Current Water Level</h3>
                         <p id="current-level" class="text-4xl font-bold text-white mt-2">-- cm</p>
                     </div>
-                    <div class="text-blue-400"><svg width="48px" height="48px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M2.5 5.5L3.11612 6.11612C3.68206 6.68206 4.44964 7 5.25 7C6.05036 7 6.81794 6.68206 7.38388 6.11612L7.61612 5.88388C8.18206 5.31794 8.94964 5 9.75 5C10.5504 5 11.3179 5.31794 11.8839 5.88388L12.1161 6.11612C12.6821 6.68206 13.4496 7 14.25 7C15.0504 7 15.8179 6.68206 16.3839 6.11612L16.6161 5.88388C17.1821 5.31794 17.9496 5 18.75 5C19.5504 5 20.3179 5.31794 20.8839 5.88388L21.5 6.5M2.5 11.5L3.11612 12.1161C3.68206 12.6821 4.44964 13 5.25 13C6.05036 13 6.81794 12.6821 7.38388 12.1161L7.61612 11.8839C8.18206 11.3179 8.94964 11 9.75 11C10.5504 11 11.3179 11.3179 11.8839 11.8839L12.1161 12.1161C12.6821 12.6821 13.4496 13 14.25 13C15.0504 13 15.8179 12.6821 16.3839 12.1161L16.6161 11.8839C17.1821 11.3179 17.9496 11 18.75 11C19.5504 11 20.3179 11.3179 20.8839 11.8839L21.5 12.5M2.5 17.5L3.11612 18.1161C3.68206 18.6821 4.44964 19 5.25 19C6.05036 19 6.81794 18.6821 7.38388 18.1161L7.61612 17.8839C8.18206 17.3179 8.94964 17 9.75 17C10.5504 17 11.3179 17.3179 11.8839 17.8839L12.1161 18.1161C12.6821 18.6821 13.4496 19 14.25 19C15.0504 19 15.8179 18.6821 16.3839 18.1161L16.6161 17.8839C17.1821 17.3179 17.9496 17 18.75 17C19.5504 17 20.3179 17.3179 20.8839 17.8839L21.5 18.5" stroke="#63D7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg></div>
+                    <div class="text-blue-400"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20" stroke-opacity="0"/></svg></div>
                 </div>
                 <div class="card flex items-center justify-between">
                     <div>
@@ -80,9 +78,9 @@
 
             <div class="card">
                 <h3 class="font-semibold text-slate-300 mb-4">Live Data (Model Inputs)</h3>
-                <div id="live-features-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                    </div>
+                <div id="live-features-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center"></div>
             </div>
+
             <div class="text-center mt-4">
                 <p class="text-sm text-slate-500 mb-4">Last updated: <span id="last-updated">Never</span></p>
                 <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 flex items-center justify-center mx-auto">
@@ -94,7 +92,6 @@
     </div>
 
     <script>
-        // --- DOM Element References ---
         const ui = {
             riverSelect: document.getElementById('river-select'),
             riskCard: document.getElementById('risk-card'), riskIcon: document.getElementById('risk-icon'),
@@ -103,27 +100,23 @@
             lastUpdated: document.getElementById('last-updated'), refreshBtn: document.getElementById('refresh-btn'),
             refreshBtnText: document.getElementById('refresh-btn-text'), loader: document.getElementById('loader'),
             chartCanvas: document.getElementById('forecast-chart'),
-
-            // *** THIS IS THE MODIFIED ELEMENT ***
             liveFeaturesGrid: document.getElementById('live-features-grid'),
-            // *** (Old precip elements are removed) ***
+            aiReportText: document.getElementById('ai-report-text') // Targeting the new text field
         };
         let forecastChart = null;
         let currentRiver = 'minija';
 
-        // --- Icon & Style Maps ---
         const icons = {
-            LOW: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-            MODERATE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-            HIGH: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-            SEVERE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H9.5a2 2 0 0 0-2 2v1c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V4a2 2 0 0 0-2-2z"/><path d="M12 6V3"/><path d="M12 18a6 6 0 0 0 6-6 4.5 4.5 0 0 0-4.5-4.5c-2.8 0-4.4 2.3-4.5 4.5A6 6 0 0 0 12 18z"/><path d="M15.5 8.5 18 6"/><path d="m6 18 3-3"/><path d="M6 6l2.5 2.5"/><path d="m18 18-3-3"/></svg>',
-            Rising: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><line x1="12" x2="12" y1="19" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
-            Falling: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><line x1="12" x2="12" y1="5" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
-            Stable: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><line x1="5" x2="19" y1="12" y2="12"/></svg>'
+            LOW: '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+            MODERATE: '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="17" x2="12" y2="17"/><line x1="12" y1="9" x2="12" y2="13"/></svg>',
+            HIGH: '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>',
+            SEVERE: '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>',
+            Rising: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+            Falling: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
+            Stable: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
         };
         const riskClassMap = { LOW: 'risk-low', MODERATE: 'risk-moderate', HIGH: 'risk-high', SEVERE: 'risk-severe' };
 
-        // --- UI Update Function ---
         function updateUI(data) {
             ui.riskCard.className = `card text-center flex flex-col items-center justify-center p-6 ${riskClassMap[data.risk.level]}`;
             ui.riskIcon.innerHTML = icons[data.risk.level];
@@ -132,129 +125,78 @@
             ui.trendText.textContent = data.trend.text;
             ui.trendIcon.innerHTML = icons[data.trend.text];
             ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString('lt-LT');
+            
+            // *** Update the AI Text Field ***
+            ui.aiReportText.textContent = data.aiReport || "No analysis available.";
 
-
-            // *** THIS IS THE NEW DYNAMIC SECTION ***
+            // Dynamic Features Grid
             const features = data.liveFeatures;
             const grid = ui.liveFeaturesGrid;
-            grid.innerHTML = ''; // Clear old cards
-
-            // 1. Find all unique station names from the features keys
+            grid.innerHTML = '';
             const stationNames = new Set();
             Object.keys(features).forEach(key => {
-                // "precip_klaipedos_lag_24h" -> "klaipedos"
                 const parts = key.split('_');
-                if (parts[0] === 'precip' && parts.length > 1) {
-                    stationNames.add(parts[1]);
-                }
+                if (parts[0] === 'precip' && parts.length > 1) stationNames.add(parts[1]);
             });
-
-            // 2. Create cards for each station and lag time in a specific order
-            const lagTimes = ['24h', '72h'];
-            stationNames.forEach(station => {
-                lagTimes.forEach(lag => {
+            ['24h', '72h'].forEach(lag => {
+                stationNames.forEach(station => {
                     const key = `precip_${station}_lag_${lag}`;
                     if (features.hasOwnProperty(key)) {
-                        const value = (features[key] || 0).toFixed(1);
-                        // Capitalize the station name (e.g., "klaipedos" -> "Klaipėdos")
-                        // Note: This is a simple capitalization, not full grammar.
-                        const stationCapitalized = station.charAt(0).toUpperCase() + station.slice(1);
-
-                        const cardHtml = `
-                            <div>
-                                <p class="text-sm text-slate-400">${stationCapitalized} Precip (${lag})</p>
-                                <p class="text-xl font-semibold mt-1">${value} mm</p>
-                            </div>
-                        `;
-                        grid.innerHTML += cardHtml;
+                        const val = (features[key] || 0).toFixed(1);
+                        const stName = station.charAt(0).toUpperCase() + station.slice(1);
+                        grid.innerHTML += `<div><p class="text-sm text-slate-400">${stName} (${lag})</p><p class="text-xl font-semibold mt-1">${val} mm</p></div>`;
                     }
                 });
             });
-            // *** END OF NEW DYNAMIC SECTION ***
 
-
-            // --- Update Chart ---
+            // Chart
             const labels = data.historicalData.map(d => new Date(d.date).toLocaleDateString('lt-LT', { month: 'short', day: 'numeric' }));
             const actualData = data.historicalData.map(d => d.actual ?? null);
             const predictedData = data.historicalData.map(d => d.predicted ?? null);
 
             if (forecastChart) forecastChart.destroy();
-
             forecastChart = new Chart(ui.chartCanvas, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Actual Water Level (cm)', data: actualData, borderColor: '#3B82F6', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#3B82F6', tension: 0.1, spanGaps: true },
-                        { label: 'Predicted Water Level (cm)', data: predictedData, borderColor: '#EF4444', borderDash: [5, 5], borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#EF4444', tension: 0.1, spanGaps: true }
+                        { label: 'Actual', data: actualData, borderColor: '#3B82F6', borderWidth: 2, pointRadius: 3, tension: 0.1, spanGaps: true },
+                        { label: 'Predicted', data: predictedData, borderColor: '#EF4444', borderDash: [5,5], borderWidth: 2, pointRadius: 3, tension: 0.1, spanGaps: true }
                     ]
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } },
-                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } }
-                    },
-                    plugins: { legend: { labels: { color: '#E2E8F0', font: { size: 14 } } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#334155' } }, x: { grid: { color: '#334155' } } } }
             });
         }
 
-        // --- Data Fetching Functions ---
-        async function fetchRiverData(riverName) {
-            console.log(`Fetching data for ${riverName}...`);
-            ui.loader.classList.remove('hidden'); // Show small loader
+        async function fetchRiverData(river) {
+            ui.loader.classList.remove('hidden');
             try {
-                const response = await fetch(`/api/data?river=${riverName}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const forecastData = await response.json();
-                updateUI(forecastData);
-            } catch (error) {
-                console.error("Failed to get forecast data:", error);
-                alert("Could not retrieve the forecast data. Check the console for details.");
-            } finally {
-                 ui.loader.classList.add('hidden');
-            }
+                const res = await fetch(`/api/data?river=${river}`);
+                if (!res.ok) throw new Error(res.status);
+                updateUI(await res.json());
+            } catch (e) { console.error(e); }
+            finally { ui.loader.classList.add('hidden'); }
         }
 
         async function runPredictions() {
-            console.log("Running predictions...");
             ui.refreshBtn.disabled = true;
             ui.refreshBtnText.classList.add('hidden');
             ui.loader.classList.remove('hidden');
-
+            ui.aiReportText.textContent = "Generating new analysis..."; // Immediate feedback
             try {
-                const response = await fetch('/api/run_predictions', { method: 'POST' });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                // After predictions are run, fetch the new data for the current river
+                await fetch('/api/run_predictions', { method: 'POST' });
                 await fetchRiverData(currentRiver);
-
-            } catch (error) {
-                console.error("Failed to run predictions:", error);
-                alert("Could not run the forecast. Check the console for details.");
-            } finally {
+            } catch (e) { alert("Update failed."); }
+            finally {
                 ui.refreshBtn.disabled = false;
                 ui.refreshBtnText.classList.remove('hidden');
                 ui.loader.classList.add('hidden');
             }
         }
 
-        // --- Event Listeners ---
-        ui.riverSelect.addEventListener('change', (e) => {
-            currentRiver = e.target.value;
-            fetchRiverData(currentRiver);
-        });
-
+        ui.riverSelect.addEventListener('change', (e) => { currentRiver = e.target.value; fetchRiverData(currentRiver); });
         ui.refreshBtn.addEventListener('click', runPredictions);
-
-        // Initial load
-        document.addEventListener('DOMContentLoaded', () => {
-            currentRiver = ui.riverSelect.value;
-            fetchRiverData(currentRiver);
-        });
-
+        document.addEventListener('DOMContentLoaded', () => fetchRiverData(currentRiver));
     </script>
-
 </body>
 </html>
