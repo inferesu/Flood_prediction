@@ -1,6 +1,8 @@
 import json
 import os
 import time
+import atexit
+import logging
 from datetime import datetime, timedelta
 import warnings
 
@@ -10,6 +12,9 @@ import pandas as pd
 import requests
 import torch
 from flask import Flask, jsonify, render_template, request
+
+# --- Scheduler Imports ---
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- LLM Integration Imports ---
 from google import genai
@@ -21,6 +26,11 @@ from anfis.membership import BellMembFunc
 
 # Suppress PyTorch warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+
+# --- LOGGING SETUP ---
+# This ensures scheduler messages appear in your console
+logging.basicConfig()
+logging.getLogger('apscheduler').setLevel(logging.INFO)
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
@@ -67,48 +77,31 @@ DANE_CONFIG = {
 RIVER_CONFIGS = {"minija": MINIJA_CONFIG, "dane": DANE_CONFIG}
 
 
-# --- CRITICAL UPDATE: EXACT FETCHING LOGIC ---
+# --- DATA FETCHING FUNCTIONS ---
 
 def fetch_water_level_latest(station_code):
-    """
-    Fetches the specific list of today's measurements and picks the LAST one.
-    If today is empty (e.g. 00:01 AM), it falls back to yesterday's last reading.
-    """
-    # Try Today, then Yesterday
+    """Fetches the specific list of today's measurements and picks the LAST one."""
     for days_back in [0, 1]:
         date = datetime.now().date() - timedelta(days=days_back)
         date_str = date.strftime("%Y-%m-%d")
         url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
 
         try:
-            print(f"   -> Checking {date_str} for latest data...")
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
                 data = resp.json().get("observations", [])
-
-                # Filter for valid water levels
                 valid_obs = [x for x in data if x.get('waterLevel') is not None]
 
                 if valid_obs:
-                    # Sort by time to ensure we get the absolute last entry (10:00:00)
-                    # ISO formatted dates sort correctly as strings
                     valid_obs.sort(key=lambda x: x.get('observationTimeUtc', ''))
-
-                    latest_reading = valid_obs[-1]  # TAKE THE LAST ONE
-                    level = latest_reading['waterLevel']
-                    time_utc = latest_reading.get('observationTimeUtc')
-
-                    print(f"   -> 🎯 FOUND LATEST: {level} cm at {time_utc}")
-                    return round(level, 2)
+                    latest_reading = valid_obs[-1]
+                    return round(latest_reading['waterLevel'], 2)
         except Exception as e:
             print(f"   - Fetch error: {e}")
-
-    print("   ❌ No data found for Today or Yesterday.")
     return None
 
 
 def fetch_water_level_average(station_code, date):
-    """ Used ONLY for archiving historical daily averages (Graph history) """
     date_str = date.strftime("%Y-%m-%d")
     url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
     try:
@@ -139,7 +132,6 @@ def fetch_precipitation_sum(station_code, date):
 # --- FILE MANAGEMENT ---
 
 def update_data_file(config: dict):
-    """ Archives YESTERDAY'S average data for the graph history """
     yesterday = datetime.now().date() - timedelta(days=1)
     yesterday_str = yesterday.strftime("%Y-%m-%d")
     data_file = config['data_file']
@@ -164,7 +156,6 @@ def update_data_file(config: dict):
 def prepare_features(df, config):
     df = df.copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-    # We align data daily to calculate lags correctly
     df = df.drop_duplicates(subset='timestamp', keep='last').set_index('timestamp').asfreq('D').ffill()
     for s in config['meteo_stations_short']:
         c = f'precip_{s}-ams_mm'
@@ -195,14 +186,12 @@ def generate_gemini_report(config, current_level, predicted_change, projected_le
 
     prompt = f"""
     Act as a Hydrology Analyst for {config['display_name']}.
-
     LIVE TELEMETRY:
     - Current Level: {current_level:.2f} cm (Latest Snapshot)
     - 24h Rain: {rain_24h:.2f} mm
     - Forecast Change: {predicted_change:+.2f} cm
     - Forecast Level: {projected_level:.2f} cm
     - Risk: {risk_level}
-
     Write a 2-sentence status update for residents. Mention if the water is rising, falling, or stable.
     """
     try:
@@ -227,8 +216,6 @@ def run_prediction_job(config):
         model.eval()
 
         today = datetime.now().date()
-
-        # 1. GET LIVE SNAPSHOT (e.g. 429.4)
         live_wl = fetch_water_level_latest(config["hydro_station"])
         live_precip = {f'precip_{c}_mm': fetch_precipitation_sum(c, today) for c in config['meteo_stations_codes']}
 
@@ -246,11 +233,8 @@ def run_prediction_job(config):
         features_list = model_config["features_list"]
         X_unscaled = last_row[features_list].values
 
-        # 2. FORCE INJECTION
-        # Ensure the model runs on 429.4, not an average
         if "water_level_cm" in features_list:
             idx = features_list.index("water_level_cm")
-            print(f"   ⚠️ Overwriting feature input with LIVE value: {live_wl}")
             X_unscaled[0, idx] = live_wl
 
         if np.isnan(X_unscaled).any(): return
@@ -267,11 +251,15 @@ def run_prediction_job(config):
 
         today_str = today.strftime("%Y-%m-%d")
         tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+
         log_data = {}
         if os.path.exists(config["predictions_log_path"]):
-            with open(config["predictions_log_path"], 'r') as f: log_data = json.load(f)
+            with open(config["predictions_log_path"], 'r') as f:
+                try:
+                    log_data = json.load(f)
+                except:
+                    log_data = {}
 
-        # Save the PREDICTION based on 429.4
         log_data.setdefault(today_str, {})['actual'] = live_wl
         log_data.setdefault(tomorrow_str, {})['predicted'] = pred_level
         log_data.setdefault(tomorrow_str, {})['report'] = report
@@ -284,18 +272,34 @@ def run_prediction_job(config):
         print(f"❌ Error {config['name']}: {e}")
 
 
+# --- SCHEDULER TASK WRAPPER ---
+
+def scheduled_auto_prediction():
+    """ Runs automatically at xx:05 """
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Using logging to ensure it shows in console despite buffering
+    logging.info(f"\n⏰ [Scheduler] Automatic Job Triggered at {ts}")
+    try:
+        update_data_file(MINIJA_CONFIG)
+        update_data_file(DANE_CONFIG)
+        run_prediction_job(MINIJA_CONFIG)
+        run_prediction_job(DANE_CONFIG)
+        logging.info("✅ [Scheduler] Cycle finished.\n")
+    except Exception as e:
+        logging.error(f"❌ [Scheduler] Error: {e}\n")
+
+
 # --- ROUTES ---
 
 @app.route('/')
-def index(): return render_template('index.html')
+def index():
+    return render_template('index.html')
 
 
 @app.route('/api/run_predictions', methods=['POST'])
 def run_predictions_api():
-    update_data_file(MINIJA_CONFIG)
-    update_data_file(DANE_CONFIG)
-    run_prediction_job(MINIJA_CONFIG)
-    run_prediction_job(DANE_CONFIG)
+    """ Manual Trigger from Button """
+    scheduled_auto_prediction()
     return jsonify({"status": "ok"})
 
 
@@ -310,12 +314,16 @@ def get_data_api():
         today_str = today.strftime("%Y-%m-%d")
         tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        # 1. UI CARD: FETCH LIVE (429.4)
         real_time_level = fetch_water_level_latest(config['hydro_station'])
 
+        # Fallback to log if live fetch fails
         log_data = {}
         if os.path.exists(config["predictions_log_path"]):
-            with open(config["predictions_log_path"], 'r') as f: log_data = json.load(f)
+            with open(config["predictions_log_path"], 'r') as f:
+                try:
+                    log_data = json.load(f)
+                except:
+                    log_data = {}
 
         if real_time_level is None:
             real_time_level = log_data.get(today_str, {}).get('actual', 0)
@@ -323,14 +331,12 @@ def get_data_api():
         pred_level = log_data.get(tomorrow_str, {}).get('predicted', 0)
         ai_report = log_data.get(tomorrow_str, {}).get('report', "No report available.")
 
-        # Features
         df = pd.read_csv(config["data_file"])
         df_feats = prepare_features(df, config)
         last_row = df_feats.iloc[-1:]
         feats = {}
         for s in config['meteo_stations_short']:
             feats[f"precip_{s}_lag_24h"] = float(last_row.get(f'precip_{s}_lag_24h', 0))
-            feats[f"precip_{s}_lag_72h"] = float(last_row.get(f'precip_{s}_lag_72h', 0))
 
         lvl_mod, lvl_high, lvl_severe = config['risk_levels']
         risk = 'LOW'
@@ -344,7 +350,6 @@ def get_data_api():
         trend = 'Rising' if (pred_level - real_time_level) > 10 else 'Falling' if (
                                                                                               pred_level - real_time_level) < -10 else 'Stable'
 
-        # Graph History (Average)
         hist_data = []
         for i in range(30):
             d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -354,7 +359,7 @@ def get_data_api():
 
         return jsonify({
             "riverName": config['display_name'],
-            "lastKnownLevel": real_time_level,  # This will now show 429.4
+            "lastKnownLevel": real_time_level,
             "predictedNextDayLevel": pred_level,
             "aiReport": ai_report,
             "liveFeatures": feats,
@@ -367,5 +372,26 @@ def get_data_api():
         return jsonify({"error": str(e)}), 500
 
 
+# --- INITIALIZE SCHEDULER & RUN ---
+
+scheduler = BackgroundScheduler()
+
+# 1. Add the cron job (Hourly at minute 05)
+scheduler.add_job(func=scheduled_auto_prediction, trigger="cron", minute="05", id="hourly_prediction")
+
+# 2. STARTUP CHECK: Print exactly when the job will run
+# This will show up in your console when you run 'python app.py'
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+
+print("\n---------------------------------------------------")
+print(f"⏰ Scheduler Active. Current System Time: {datetime.now()}")
+for job in scheduler.get_jobs():
+    print(f"➡️  Job '{job.id}' will run next at: {job.next_run_time}")
+print("---------------------------------------------------\n")
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    # If you want to force a run ON STARTUP to verify it works, uncomment the line below:
+    # scheduled_auto_prediction()
+
+    app.run(debug=True, port=5002, use_reloader=False)
