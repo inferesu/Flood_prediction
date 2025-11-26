@@ -6,6 +6,10 @@ import logging
 from datetime import datetime, timedelta
 import warnings
 
+# --- Load Environment Variables ---
+from dotenv import load_dotenv  # <--- Added import
+load_dotenv()  # <--- Added execution to load .env file
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -20,9 +24,20 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from google import genai
 from google.genai import types
 
+# --- GLOBAL LLM SETUP ---
+GEMINI_MODEL = 'gemini-2.0-flash'
+try:
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+except Exception as e:
+    print(f"LLM Initialization Warning: {e}")
+
 # --- Import ANFIS classes ---
-from anfis.anfis import AnfisNet
-from anfis.membership import BellMembFunc
+# Ensure the 'anfis' folder is in the same directory or PYTHONPATH
+try:
+    from anfis.anfis import AnfisNet
+    from anfis.membership import BellMembFunc
+except ImportError:
+    print("Warning: ANFIS modules not found. Ensure 'anfis/' directory exists.")
 
 # Suppress PyTorch warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -37,11 +52,20 @@ app = Flask(__name__)
 
 # --- GLOBAL LLM SETUP ---
 GEMINI_MODEL = 'gemini-2.0-flash'
-try:
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-except Exception as e:
-    print(f"LLM Initialization Warning: {e}")
+
+# Retrieve API Key from loaded environment variables
+api_key = os.environ.get("GEMINI_API_KEY")
+
+if not api_key:
+    print("⚠️ WARNING: GEMINI_API_KEY not found in .env file or environment variables.")
     client = None
+else:
+    try:
+        client = genai.Client(api_key=api_key)
+        print("✅ Gemini Client Initialized successfully.")
+    except Exception as e:
+        print(f"❌ LLM Initialization Error: {e}")
+        client = None
 
 # --- CONFIGURATION ---
 MINIJA_CONFIG = {
