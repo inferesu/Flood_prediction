@@ -64,10 +64,10 @@
     "2025-12-01": {
         "predicted": 100.54002283811569,
         "report": "The water level in the Dan\u0117 River is currently stable at 99.80 cm, and is forecasted to slightly rise to 100.54 cm over the next 24 hours, but remains at a low-risk level.\n",
-        "actual": 101.9
+        "actual": 100.6
     },
     "2025-12-02": {
-        "predicted": 102.64111670255662,
-        "report": "The water level in the Dan\u0117 River is currently rising and is forecasted to increase slightly to 102.64 cm. While the river level is being monitored closely, the current risk remains low.\n"
+        "predicted": 101.3411167025566,
+        "report": "The water level in the Dan\u0117 River is currently stable, with a slight predicted rise. While the forecast indicates a level of 101.34 cm, the risk remains low based on current data.\n"
     }
 }

@@ -24,7 +24,7 @@
     <div class="container mx-auto p-4 md:p-8 max-w-4xl">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-white">River Flood Risk</h1>
-            <p class="text-slate-400 mt-2">Live daily forecast powered by an ANFIS AI Model</p>
+            <p class="text-slate-400 mt-2">Hybrid System: ANFIS AI + ChromaDB Analog Forecasting</p>
             <div class="mt-6">
                 <select id="river-select" class="river-select">
                     <option value="minija">Minija (Priekulė)</option>
@@ -40,16 +40,34 @@
                 <p id="risk-level" class="text-5xl font-bold mt-1">Loading...</p>
             </div>
 
+            <div class="card border-l-4 border-emerald-500 bg-slate-800/50">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-emerald-900/30 rounded-lg text-emerald-400 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-1">Historical Analog (ChromaDB)</h3>
+                            <p class="text-slate-300 text-sm">Most similar 6-day pattern found in history:</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                         <p class="text-xs text-slate-400 uppercase">Matched Date</p>
+                         <p id="analog-date" class="text-lg font-bold text-emerald-300">--</p>
+                         <p class="text-xs text-slate-400 uppercase mt-2">Analog Prediction</p>
+                         <p id="analog-pred" class="text-2xl font-bold text-white">-- cm</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="card border-l-4 border-purple-500 bg-slate-800/50">
                 <div class="flex items-start gap-4">
                     <div class="p-3 bg-purple-900/30 rounded-lg text-purple-400 shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
                     </div>
                     <div>
                         <h3 class="text-lg font-bold text-white mb-1">AI Hydrology Analyst</h3>
-                        <p id="ai-report-text" class="text-slate-300 text-base leading-relaxed">
-                            Initializing analysis...
-                        </p>
+                        <p id="ai-report-text" class="text-slate-300 text-base leading-relaxed">Initializing analysis...</p>
                     </div>
                 </div>
             </div>
@@ -64,7 +82,7 @@
                 </div>
                 <div class="card flex items-center justify-between">
                     <div>
-                        <h3 class="font-semibold text-slate-300">Next Day Trend</h3>
+                        <h3 class="font-semibold text-slate-300">ANFIS Model Forecast</h3>
                         <p id="trend-text" class="text-4xl font-bold text-white mt-2">--</p>
                     </div>
                     <div id="trend-icon" class="text-gray-500"></div>
@@ -77,8 +95,9 @@
             </div>
 
             <div class="card">
-                <h3 class="font-semibold text-slate-300 mb-4">Live Data (Model Inputs)</h3>
-                <div id="live-features-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center"></div>
+                <h3 class="font-semibold text-slate-300 mb-4">Precipitation Accumulation (Model Input)</h3>
+                <div id="rain-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    </div>
             </div>
 
             <div class="text-center mt-4">
@@ -100,8 +119,10 @@
             lastUpdated: document.getElementById('last-updated'), refreshBtn: document.getElementById('refresh-btn'),
             refreshBtnText: document.getElementById('refresh-btn-text'), loader: document.getElementById('loader'),
             chartCanvas: document.getElementById('forecast-chart'),
-            liveFeaturesGrid: document.getElementById('live-features-grid'),
-            aiReportText: document.getElementById('ai-report-text') // Targeting the new text field
+            aiReportText: document.getElementById('ai-report-text'),
+            rainGrid: document.getElementById('rain-grid'),
+            analogDate: document.getElementById('analog-date'),
+            analogPred: document.getElementById('analog-pred')
         };
         let forecastChart = null;
         let currentRiver = 'minija';
@@ -122,34 +143,44 @@
             ui.riskIcon.innerHTML = icons[data.risk.level];
             ui.riskLevel.textContent = data.risk.level;
             ui.currentLevel.textContent = `${data.lastKnownLevel.toFixed(1)} cm`;
-            ui.trendText.textContent = data.trend.text;
+            ui.trendText.textContent = `${data.predictedNextDayLevel.toFixed(1)} cm`;
             ui.trendIcon.innerHTML = icons[data.trend.text];
             ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString('lt-LT');
-            
-            // *** Update the AI Text Field ***
             ui.aiReportText.textContent = data.aiReport || "No analysis available.";
 
-            // Dynamic Features Grid
-            const features = data.liveFeatures;
-            const grid = ui.liveFeaturesGrid;
-            grid.innerHTML = '';
-            const stationNames = new Set();
-            Object.keys(features).forEach(key => {
-                const parts = key.split('_');
-                if (parts[0] === 'precip' && parts.length > 1) stationNames.add(parts[1]);
-            });
-            ['24h', '72h'].forEach(lag => {
-                stationNames.forEach(station => {
-                    const key = `precip_${station}_lag_${lag}`;
-                    if (features.hasOwnProperty(key)) {
-                        const val = (features[key] || 0).toFixed(1);
-                        const stName = station.charAt(0).toUpperCase() + station.slice(1);
-                        grid.innerHTML += `<div><p class="text-sm text-slate-400">${stName} (${lag})</p><p class="text-xl font-semibold mt-1">${val} mm</p></div>`;
-                    }
-                });
+            // --- ANALOG CARD UPDATE ---
+            if (data.analogForecast) {
+                ui.analogDate.textContent = data.analogForecast.historical_date;
+                ui.analogPred.textContent = data.analogForecast.predicted_level.toFixed(1) + " cm";
+            } else {
+                ui.analogDate.textContent = "Insufficient Data";
+                ui.analogPred.textContent = "--";
+            }
+
+            // --- DYNAMIC RAIN GRID ---
+            ui.rainGrid.innerHTML = '';
+            const feats = data.liveFeatures;
+            const stationOrder = ['klaipedos', 'vezaiciu'];
+
+            stationOrder.forEach(station => {
+                if (feats[`${station}_24h`] !== undefined) {
+                    const name = station.charAt(0).toUpperCase() + station.slice(1) + ' AMS';
+                    ui.rainGrid.innerHTML += `
+                        <div class="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                            <p class="text-xs text-slate-400 uppercase">${name}</p>
+                            <p class="text-sm font-bold text-blue-300 mt-1">24h</p>
+                            <p class="text-xl font-bold text-white mt-1">${feats[`${station}_24h`].toFixed(1)} mm</p>
+                        </div>
+                        <div class="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                            <p class="text-xs text-slate-400 uppercase">${name}</p>
+                            <p class="text-sm font-bold text-indigo-300 mt-1">72h</p>
+                            <p class="text-xl font-bold text-white mt-1">${feats[`${station}_72h`].toFixed(1)} mm</p>
+                        </div>
+                    `;
+                }
             });
 
-            // Chart
+            // --- CHART UPDATE ---
             const labels = data.historicalData.map(d => new Date(d.date).toLocaleDateString('lt-LT', { month: 'short', day: 'numeric' }));
             const actualData = data.historicalData.map(d => d.actual ?? null);
             const predictedData = data.historicalData.map(d => d.predicted ?? null);
@@ -161,7 +192,7 @@
                     labels: labels,
                     datasets: [
                         { label: 'Actual', data: actualData, borderColor: '#3B82F6', borderWidth: 2, pointRadius: 3, tension: 0.1, spanGaps: true },
-                        { label: 'Predicted', data: predictedData, borderColor: '#EF4444', borderDash: [5,5], borderWidth: 2, pointRadius: 3, tension: 0.1, spanGaps: true }
+                        { label: 'ANFIS Predicted', data: predictedData, borderColor: '#EF4444', borderDash: [5,5], borderWidth: 2, pointRadius: 3, tension: 0.1, spanGaps: true }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#334155' } }, x: { grid: { color: '#334155' } } } }
@@ -182,7 +213,7 @@
             ui.refreshBtn.disabled = true;
             ui.refreshBtnText.classList.add('hidden');
             ui.loader.classList.remove('hidden');
-            ui.aiReportText.textContent = "Generating new analysis..."; // Immediate feedback
+            ui.aiReportText.textContent = "Generating new analysis...";
             try {
                 await fetch('/api/run_predictions', { method: 'POST' });
                 await fetchRiverData(currentRiver);
