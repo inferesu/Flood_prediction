@@ -20,7 +20,6 @@ from google import genai
 from google.genai import types
 
 # --- Import ANFIS classes ---
-# Ensure the folder 'anfis' with __init__.py, anfis.py and membership.py exists
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
@@ -76,6 +75,7 @@ RIVER_CONFIGS = {"minija": MINIJA_CONFIG, "dane": DANE_CONFIG}
 
 def fetch_water_level_latest(station_code):
     """Fetches the specific list of today's measurements and picks the LAST one."""
+    print(f"   -> Fetching Hydro: {station_code}")
     for days_back in [0, 1]:
         date = datetime.now().date() - timedelta(days=days_back)
         date_str = date.strftime("%Y-%m-%d")
@@ -88,13 +88,12 @@ def fetch_water_level_latest(station_code):
                 valid_obs = [x for x in data if x.get('waterLevel') is not None]
 
                 if valid_obs:
-                    # Sort by time to ensure we get the absolute last entry
                     valid_obs.sort(key=lambda x: x.get('observationTimeUtc', ''))
                     latest_reading = valid_obs[-1]
                     level = latest_reading['waterLevel']
                     return round(level, 2)
         except Exception as e:
-            print(f"   - Fetch error: {e}")
+            print(f"   - Fetch error (Hydro): {e}")
     return None
 
 
@@ -108,22 +107,24 @@ def fetch_water_level_average(station_code, date):
         observations = resp.json().get("observations", [])
         levels = [obs['waterLevel'] for obs in observations if obs.get('waterLevel') is not None]
         if levels: return round(sum(levels) / len(levels), 2)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"   - Error fetching avg water level: {e}")
     return None
 
 
 def fetch_precipitation_sum(station_code, date):
+    """Fetches daily precipitation sum."""
     date_str = date.strftime("%Y-%m-%d")
     url = f"https://api.meteo.lt/v1/stations/{station_code}/observations/{date_str}"
+    print(f"   -> Fetching Precip: {station_code} ({date_str})")
     try:
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
         observations = resp.json().get("observations", [])
-        return round(sum(obs.get('precipitation', 0) for obs in observations if obs.get('precipitation') is not None),
-                     2)
-    except Exception:
-        pass
+        total = sum(obs.get('precipitation', 0) for obs in observations if obs.get('precipitation') is not None)
+        return round(total, 2)
+    except Exception as e:
+        print(f"   - ❌ Error fetching precipitation for {station_code}: {e}")
     return 0
 
 
@@ -137,17 +138,26 @@ def update_data_file(config: dict):
 
     if os.path.exists(data_file):
         df_existing = pd.read_csv(data_file)
-        if yesterday_str in df_existing['timestamp'].values: return
+        if yesterday_str in df_existing['timestamp'].values:
+            return  # Data already exists
     else:
         cols = ['timestamp', 'water_level_cm'] + [f'precip_{c}_mm' for c in config['meteo_stations_codes']]
         pd.DataFrame(columns=cols).to_csv(data_file, index=False)
 
+    print(f"--- Archiving History for {config['name']} ---")
     wl = fetch_water_level_average(config['hydro_station'], yesterday)
-    precip = {f'precip_{c}_mm': fetch_precipitation_sum(c, yesterday) for c in config['meteo_stations_codes']}
+
+    # FIX: Use loop with sleep instead of dict comprehension to avoid API blocking
+    precip = {}
+    for c in config['meteo_stations_codes']:
+        precip[f'precip_{c}_mm'] = fetch_precipitation_sum(c, yesterday)
+        time.sleep(1.0)  # Pause to respect API rate limits
 
     if wl is None: return
-    pd.DataFrame([{'timestamp': yesterday_str, 'water_level_cm': wl, **precip}]).to_csv(data_file, mode='a',
-                                                                                        header=False, index=False)
+
+    row_data = {'timestamp': yesterday_str, 'water_level_cm': wl, **precip}
+    pd.DataFrame([row_data]).to_csv(data_file, mode='a', header=False, index=False)
+    print(f"✅ Archived: {row_data}")
 
 
 # --- ANFIS & FEATURES ---
@@ -216,7 +226,12 @@ def run_prediction_job(config):
 
         today = datetime.now().date()
         live_wl = fetch_water_level_latest(config["hydro_station"])
-        live_precip = {f'precip_{c}_mm': fetch_precipitation_sum(c, today) for c in config['meteo_stations_codes']}
+
+        # FIX: Use loop with sleep instead of dict comprehension
+        live_precip = {}
+        for c in config['meteo_stations_codes']:
+            live_precip[f'precip_{c}_mm'] = fetch_precipitation_sum(c, today)
+            time.sleep(1.0)  # Pause to respect API rate limits
 
         if live_wl is None:
             print("❌ No live water level found.")
@@ -236,7 +251,9 @@ def run_prediction_job(config):
             idx = features_list.index("water_level_cm")
             X_unscaled[0, idx] = live_wl
 
-        if np.isnan(X_unscaled).any(): return
+        if np.isnan(X_unscaled).any():
+            print("❌ NaN in features, skipping prediction.")
+            return
 
         X_scaled = scaler_X.transform(X_unscaled)
         with torch.no_grad():
@@ -269,6 +286,8 @@ def run_prediction_job(config):
 
     except Exception as e:
         print(f"❌ Error {config['name']}: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 # --- SCHEDULER TASK WRAPPER ---
@@ -334,7 +353,11 @@ def get_data_api():
         last_row = df_feats.iloc[-1:]
         feats = {}
         for s in config['meteo_stations_short']:
-            feats[f"precip_{s}_lag_24h"] = float(last_row.get(f'precip_{s}_lag_24h', 0))
+            col_name = f"precip_{s}_lag_24h"
+            if col_name in last_row:
+                feats[col_name] = float(last_row[col_name].iloc[0])
+            else:
+                feats[col_name] = 0.0
 
         lvl_mod, lvl_high, lvl_severe = config['risk_levels']
         risk = 'LOW'
@@ -346,13 +369,18 @@ def get_data_api():
             risk = 'MODERATE'
 
         trend = 'Rising' if (pred_level - real_time_level) > 10 else 'Falling' if (
-                                                                                              pred_level - real_time_level) < -10 else 'Stable'
+                                                                                          pred_level - real_time_level) < -10 else 'Stable'
 
         hist_data = []
+        # Get last 30 days history
         for i in range(30):
             d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
             if d in log_data: hist_data.append({'date': d, **log_data[d]})
-        hist_data.append({'date': tomorrow_str, **log_data.get(tomorrow_str, {})})
+
+        # Add tomorrow's prediction
+        if tomorrow_str in log_data:
+            hist_data.append({'date': tomorrow_str, **log_data.get(tomorrow_str, {})})
+
         hist_data.sort(key=lambda x: x['date'])
 
         return jsonify({
@@ -367,6 +395,8 @@ def get_data_api():
             "lastUpdated": datetime.now().isoformat()
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
