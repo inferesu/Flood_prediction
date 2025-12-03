@@ -176,10 +176,20 @@
     "2025-12-01": {
         "predicted": 206.3443754196167,
         "report": "The water level in Minija (Priekul\u0117) is currently at 220.80 cm and is expected to fall to 206.34 cm within the next 24 hours. While we are closely monitoring the situation, the risk level remains low at this time.\n",
-        "actual": 217
+        "actual": 215.7
     },
     "2025-12-02": {
-        "predicted": 202.4714584350586,
-        "report": "The water level in Minija (Priekul\u0117) is currently stable, but is forecasted to decrease to 202.47 cm in the next 24 hours. Although there was a small amount of rainfall, the risk remains low.\n"
+        "predicted": 201.17145843505858,
+        "report": "The water level in Minija (Priekul\u0117) is currently stable but forecasted to decrease significantly. The current level is 215.70 cm and expected to fall to 201.17 cm, keeping the risk at LOW.\n",
+        "actual": 213.2
+    },
+    "2025-12-03": {
+        "predicted": 198.58174533843993,
+        "report": "The Minija river level in Priekul\u0117 is currently at 213.20 cm and is falling. Forecasts predict the level will decrease further to 198.58 cm in the coming hours, and the risk remains low.\n",
+        "actual": 214.9
+    },
+    "2025-12-04": {
+        "predicted": 200.23570289611817,
+        "report": "The water level in Minija (Priekul\u0117) is currently stable, but is expected to fall approximately 14.66 cm to 200.24 cm. While the risk is currently low, please continue to monitor updates.\n"
     }
 }

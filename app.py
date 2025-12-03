@@ -418,4 +418,4 @@ if __name__ == "__main__":
     # If you want to force a run ON STARTUP to verify it works, uncomment the line below:
     # scheduled_auto_prediction()
 
-    app.run(debug=True, port=5002, use_reloader=False)
+    app.run(debug=True, port=5000, use_reloader=False)
