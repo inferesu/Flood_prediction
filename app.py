@@ -25,7 +25,7 @@ from google import genai
 from google.genai import types
 
 # --- GLOBAL LLM SETUP ---
-GEMINI_MODEL = 'gemini-2.0-flash'
+GEMINI_MODEL = 'gemini-2.5-flash'
 try:
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 except Exception as e:
@@ -51,7 +51,7 @@ logging.getLogger('apscheduler').setLevel(logging.INFO)
 app = Flask(__name__)
 
 # --- GLOBAL LLM SETUP ---
-GEMINI_MODEL = 'gemini-2.0-flash'
+GEMINI_MODEL = 'gemini-2.5-flash'
 
 # Retrieve API Key from loaded environment variables
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -418,4 +418,4 @@ if __name__ == "__main__":
     # If you want to force a run ON STARTUP to verify it works, uncomment the line below:
     # scheduled_auto_prediction()
 
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False)

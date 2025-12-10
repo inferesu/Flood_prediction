@@ -30,7 +30,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 app = Flask(__name__)
 
 # --- GLOBAL LLM SETUP ---
-GEMINI_MODEL = 'gemini-2.0-flash'
+GEMINI_MODEL = 'gemini-2.5-flash'
 try:
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 except Exception as e:
