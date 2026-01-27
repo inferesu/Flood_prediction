@@ -377,10 +377,79 @@
     "2026-01-12": {
         "predicted": 229.11396713256835,
         "report": "The Minija River at Priekul\u0117 is currently at 243.70 cm, and the water level is projected to fall over the next period. We anticipate levels to drop to 229.11 cm, maintaining a LOW risk status for the area.",
-        "actual": 239.4
+        "actual": 239.6
     },
     "2026-01-13": {
-        "predicted": 224.76507034301758,
-        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 58.264327711s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '58s'}]}}"
+        "predicted": 224.96507034301757,
+        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 58.167906545s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '58s'}]}}",
+        "actual": 229.8
+    },
+    "2026-01-14": {
+        "predicted": 215.1497076034546,
+        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 57.879187072s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}",
+        "actual": 224.7
+    },
+    "2026-01-15": {
+        "predicted": 210.6563522338867,
+        "report": "The Minija River at Priekul\u0117 is currently at 224.70 cm, and water levels are expected to fall. We forecast a drop of approximately 14 cm to 210.66 cm, maintaining a low-risk situation for the area.",
+        "actual": 228
+    },
+    "2026-01-16": {
+        "predicted": 213.93295001983643,
+        "report": "The Minija River at Priekul\u0117 currently measures 228.00 cm and is forecast to fall significantly over the coming period, with a projected drop of 14.07 cm. Residents should note that the overall flood risk for the area remains LOW.",
+        "actual": 226.4
+    },
+    "2026-01-17": {
+        "predicted": 211.93416919708253,
+        "report": "The Minija River at Priekul\u0117 is currently at 226.40 cm, with levels forecast to fall by approximately 14.47 cm. We anticipate a drop to 211.93 cm, and the overall risk remains low.",
+        "actual": 220.5
+    },
+    "2026-01-18": {
+        "predicted": 205.84877681732178,
+        "report": "The Minija River at Priekul\u0117 is currently at 220.50 cm, with levels expected to fall significantly. We anticipate a drop of 14.65 cm to a forecasted level of 205.85 cm, and the flood risk remains LOW."
+    },
+    "2026-01-19": {
+        "actual": 208.6
+    },
+    "2026-01-20": {
+        "predicted": 193.92364845275878,
+        "report": "The Minija River at Priekul\u0117 currently stands at 208.60 cm and is projected to fall steadily. Our forecast indicates a decline to 193.92 cm, with the overall risk remaining LOW for residents.",
+        "actual": 203.3
+    },
+    "2026-01-21": {
+        "predicted": 188.6236484527588,
+        "report": "The Minija river at Priekul\u0117 is currently at 203.30 cm and is expected to fall significantly over the coming period. The overall risk level remains low, with water levels forecast to drop to around 188.62 cm.",
+        "actual": 198.6
+    },
+    "2026-01-22": {
+        "predicted": 183.92364845275878,
+        "report": "**Hydrology Status Update for Minija (Priekul\u0117):**\n\nThe current water level at Minija (Priekul\u0117) is 198.60 cm, and levels are actively falling. We anticipate the water level to reach approximately 183.92 cm, maintaining a LOW risk for residents.",
+        "actual": 197.1
+    },
+    "2026-01-23": {
+        "predicted": 182.42364845275878,
+        "report": "The Minija river at Priekul\u0117 is currently at 197.10 cm and is forecast to fall by approximately 14.68 cm, reaching 182.42 cm. The risk level remains low, and residents can expect continued stable conditions with a decreasing water level.",
+        "actual": 195.4
+    },
+    "2026-01-24": {
+        "predicted": 180.7236484527588,
+        "report": "The Minija River at Priekul\u0117 is currently falling, with a level of 195.40 cm. We anticipate a continued decrease, forecasting the level to drop to 180.72 cm, and the overall risk remains LOW."
+    },
+    "2026-01-25": {
+        "actual": 191.6
+    },
+    "2026-01-26": {
+        "predicted": 176.92364845275878,
+        "report": "The Minija (Priekul\u0117) water level is currently 191.60 cm and is expected to fall significantly. We anticipate a drop to 176.92 cm, maintaining a low risk level for the area.",
+        "actual": 189.1
+    },
+    "2026-01-27": {
+        "predicted": 174.48998794555663,
+        "report": "The Minija River at Priekul\u0117 is currently at 189.10 cm and is expected to fall by approximately 14.61 cm over the next 24 hours. We anticipate a forecast level of 174.49 cm, and the overall risk remains LOW.",
+        "actual": 187.3
+    },
+    "2026-01-28": {
+        "predicted": 173.82060317993165,
+        "report": "The Minija river at Priekul\u0117 is currently at 187.30 cm and is forecast to fall by approximately 13.5 cm, reaching 173.82 cm. The overall risk level remains LOW, and residents should not expect any adverse conditions."
     }
 }

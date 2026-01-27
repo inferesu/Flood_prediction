@@ -265,10 +265,79 @@
     "2026-01-12": {
         "predicted": 110.12173001766205,
         "report": "The Dan\u0117 River is currently at 109.80 cm and is forecast to be slowly rising. We anticipate a slight increase to 110.12 cm, with the overall risk remaining low.",
-        "actual": 88.9
+        "actual": 88.4
     },
     "2026-01-13": {
-        "predicted": 89.22173001766205,
-        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 57.439029863s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}"
+        "predicted": 88.72173001766205,
+        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 57.337996786s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}",
+        "actual": 79.3
+    },
+    "2026-01-14": {
+        "predicted": 79.62173001766205,
+        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 57.003054506s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}",
+        "actual": 73.9
+    },
+    "2026-01-15": {
+        "predicted": 74.7575559258461,
+        "report": "AI Analysis unavailable: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 56.574234298s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56s'}]}}",
+        "actual": 79.9
+    },
+    "2026-01-16": {
+        "predicted": 80.9997234582901,
+        "report": "The Dan\u0117 River currently measures 79.90 cm, with levels anticipated to be slowly rising. We forecast the water to reach approximately 81.00 cm, maintaining a low-risk status for residents.",
+        "actual": 66.5
+    },
+    "2026-01-17": {
+        "predicted": 67.58706021308899,
+        "report": "The current water level in the Dan\u0117 River is 66.50 cm and is forecast to be rising over the next period. We anticipate a slight increase of +1.09 cm, reaching 67.59 cm, with the overall risk remaining LOW for residents.",
+        "actual": 73.9
+    },
+    "2026-01-18": {
+        "predicted": 74.3173505306244,
+        "report": "**Hydrology Update for Dan\u0117 Residents (Klaip\u0117da):**\n\nThe Dan\u0117 River currently stands at 73.90 cm, with water levels forecast to rise slightly. We anticipate a level of 74.32 cm, maintaining a low-risk situation for the area."
+    },
+    "2026-01-19": {
+        "actual": 71.1
+    },
+    "2026-01-20": {
+        "predicted": 71.42173001766204,
+        "report": "The Dan\u0117 river level is currently stable at 71.10 cm, with a slight rise of +0.32 cm anticipated in the coming period. The forecasted level of 71.42 cm indicates a minimal increase, and the overall risk remains low for residents.",
+        "actual": 72.8
+    },
+    "2026-01-21": {
+        "predicted": 73.12173001766205,
+        "report": "Residents, the Dan\u0117 river level is currently stable at 72.80 cm, with no rainfall recorded in the past 24 hours. A minor rise of 0.32 cm is forecast, bringing the level to 73.12 cm, but the overall flood risk remains low.",
+        "actual": 74.4
+    },
+    "2026-01-22": {
+        "predicted": 74.72173001766205,
+        "report": "The Dan\u0117 River water level is currently at 74.40 cm and is forecast to see a slight rise over the next period. We anticipate levels to reach approximately 74.72 cm, however, the overall flood risk for residents remains low.",
+        "actual": 62.7
+    },
+    "2026-01-23": {
+        "predicted": 63.02173001766205,
+        "report": "Here is the status update for Dan\u0117 residents:\n\nThe Dan\u0117 River is currently at 62.70 cm and is expected to experience a slight rise over the next period. We forecast the water level to reach 63.02 cm, with the overall risk remaining low for residents.",
+        "actual": 60.5
+    },
+    "2026-01-24": {
+        "predicted": 60.82173001766205,
+        "report": "The Dan\u0117 river in Klaip\u0117da is currently at 60.50 cm and is forecast to experience a slight rise of 0.32 cm, reaching 60.82 cm. Despite this minor increase, the overall risk level remains low, and current conditions are stable."
+    },
+    "2026-01-25": {
+        "actual": 54.2
+    },
+    "2026-01-26": {
+        "predicted": 54.52173001766205,
+        "report": "The Dan\u0117 River in Klaip\u0117da is currently at 54.20 cm and is forecast to see a slight rise in the coming period. The water level is expected to reach 54.52 cm, with the overall flood risk remaining LOW.",
+        "actual": 53.7
+    },
+    "2026-01-27": {
+        "predicted": 54.08903796672821,
+        "report": "The Dan\u0117 River is currently at 53.70 cm and is expected to rise slightly over the next 24 hours. We anticipate the level to reach 54.09 cm, and the overall risk remains low for residents.",
+        "actual": 64.9
+    },
+    "2026-01-28": {
+        "predicted": 66.77376928329468,
+        "report": "The Dan\u0117 river level is currently 64.90 cm and is forecast to be rising over the next 24 hours. We anticipate the level reaching 66.77 cm, and the overall risk remains LOW."
     }
 }
