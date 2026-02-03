@@ -446,10 +446,10 @@
     "2026-01-27": {
         "predicted": 174.48998794555663,
         "report": "The Minija River at Priekul\u0117 is currently at 189.10 cm and is expected to fall by approximately 14.61 cm over the next 24 hours. We anticipate a forecast level of 174.49 cm, and the overall risk remains LOW.",
-        "actual": 187.3
+        "actual": 187.7
     },
     "2026-01-28": {
-        "predicted": 173.82060317993165,
-        "report": "The Minija river at Priekul\u0117 is currently at 187.30 cm and is forecast to fall by approximately 13.5 cm, reaching 173.82 cm. The overall risk level remains LOW, and residents should not expect any adverse conditions."
+        "predicted": 193.05,
+        "report": "Forecasted level is 193.05 cm."
     }
 }

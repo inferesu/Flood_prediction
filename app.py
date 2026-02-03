@@ -3,12 +3,12 @@ import os
 import time
 import atexit
 import logging
-from datetime import datetime, timedelta
 import warnings
+from datetime import datetime, timedelta
 
-# --- Load Environment Variables ---
-from dotenv import load_dotenv  # <--- Added import
-load_dotenv()  # <--- Added execution to load .env file
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import joblib
 import numpy as np
@@ -16,301 +16,174 @@ import pandas as pd
 import requests
 import torch
 from flask import Flask, jsonify, render_template, request
-
-# --- Scheduler Imports ---
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# --- LLM Integration Imports ---
-from google import genai
-from google.genai import types
-
-# --- GLOBAL LLM SETUP ---
-GEMINI_MODEL = 'gemini-2.5-flash'
-try:
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-except Exception as e:
-    print(f"LLM Initialization Warning: {e}")
-
 # --- Import ANFIS classes ---
-# Ensure the 'anfis' folder is in the same directory or PYTHONPATH
-try:
-    from anfis.anfis import AnfisNet
-    from anfis.membership import BellMembFunc
-except ImportError:
-    print("Warning: ANFIS modules not found. Ensure 'anfis/' directory exists.")
+from anfis.anfis import AnfisNet
+from anfis.membership import BellMembFunc
 
-# Suppress PyTorch warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('apscheduler')
 
-# --- LOGGING SETUP ---
-# This ensures scheduler messages appear in your console
-logging.basicConfig()
-logging.getLogger('apscheduler').setLevel(logging.INFO)
-
-# --- Flask App Initialization ---
 app = Flask(__name__)
 
-# --- GLOBAL LLM SETUP ---
-GEMINI_MODEL = 'gemini-2.5-flash'
+# --- HYDROLOGICAL CONSTANTS ---
+K_DECAY = 0.85  # Calibrated decay coefficient for Lithuania
 
-# Retrieve API Key from loaded environment variables
-api_key = os.environ.get("GEMINI_API_KEY")
-
-if not api_key:
-    print("⚠️ WARNING: GEMINI_API_KEY not found in .env file or environment variables.")
-    client = None
-else:
-    try:
-        client = genai.Client(api_key=api_key)
-        print("✅ Gemini Client Initialized successfully.")
-    except Exception as e:
-        print(f"❌ LLM Initialization Error: {e}")
-        client = None
-
-# --- CONFIGURATION ---
 MINIJA_CONFIG = {
     "name": "minija",
     "display_name": "Minija (Priekulė)",
-    "data_file": "live_data.csv",
+    "data_file": "live_data_complex.csv",
     "anfis_model_path": "anfis_model.pth",
     "scaler_x_path": "scaler_X.pkl",
     "scaler_y_path": "scaler_Y.pkl",
     "config_json_path": "training_config.json",
     "predictions_log_path": "predictions_log.json",
     "hydro_station": "priekules-vms",
-    "meteo_stations_codes": ["klaipedos-ams", "vezaiciu-ams"],
-    "meteo_stations_short": ["klaipedos", "vezaiciu"],
+    "meteo_stations": ["klaipedos-ams", "vezaiciu-ams"],
     "risk_levels": [250, 400, 550]
 }
 
-DANE_CONFIG = {
-    "name": "dane",
-    "display_name": "Danė (Klaipėda)",
-    "data_file": "live_data_dane.csv",
-    "anfis_model_path": "anfis_model_dane.pth",
-    "scaler_x_path": "scaler_X_dane.pkl",
-    "scaler_y_path": "scaler_Y_dane.pkl",
-    "config_json_path": "training_config_dane.json",
-    "predictions_log_path": "predictions_log_dane.json",
-    "hydro_station": "klaipedos-vms",
-    "meteo_stations_codes": ["klaipedos-ams"],
-    "meteo_stations_short": ["klaipedos"],
-    "risk_levels": [150, 250, 350]
-}
-
-RIVER_CONFIGS = {"minija": MINIJA_CONFIG, "dane": DANE_CONFIG}
+RIVER_CONFIGS = {"minija": MINIJA_CONFIG}
 
 
-# --- DATA FETCHING FUNCTIONS ---
+# --- DATA FETCHING ---
 
 def fetch_water_level_latest(station_code):
-    """Fetches the specific list of today's measurements and picks the LAST one."""
+    """Fetches the latest measured water level (WLt)."""
     for days_back in [0, 1]:
-        date = datetime.now().date() - timedelta(days=days_back)
-        date_str = date.strftime("%Y-%m-%d")
+        date_str = (datetime.now().date() - timedelta(days=days_back)).strftime("%Y-%m-%d")
         url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
-
         try:
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
                 data = resp.json().get("observations", [])
-                valid_obs = [x for x in data if x.get('waterLevel') is not None]
-
-                if valid_obs:
-                    valid_obs.sort(key=lambda x: x.get('observationTimeUtc', ''))
-                    latest_reading = valid_obs[-1]
-                    return round(latest_reading['waterLevel'], 2)
-        except Exception as e:
-            print(f"   - Fetch error: {e}")
+                valid = [x for x in data if x.get('waterLevel') is not None]
+                if valid:
+                    valid.sort(key=lambda x: x.get('observationTimeUtc', ''))
+                    return round(valid[-1]['waterLevel'], 2)
+        except Exception:
+            pass
     return None
 
 
-def fetch_water_level_average(station_code, date):
-    date_str = date.strftime("%Y-%m-%d")
-    url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
-    try:
-        resp = requests.get(url, timeout=20)
-        resp.raise_for_status()
-        observations = resp.json().get("observations", [])
-        levels = [obs['waterLevel'] for obs in observations if obs.get('waterLevel') is not None]
-        if levels: return round(sum(levels) / len(levels), 2)
-    except Exception:
-        pass
-    return None
-
-
-def fetch_precipitation_sum(station_code, date):
-    date_str = date.strftime("%Y-%m-%d")
+def fetch_meteo_latest(station_code):
+    """Fetches precip (Pt) and temperature for SMI calculation."""
+    date_str = datetime.now().strftime("%Y-%m-%d")
     url = f"https://api.meteo.lt/v1/stations/{station_code}/observations/{date_str}"
     try:
-        resp = requests.get(url, timeout=20)
-        resp.raise_for_status()
-        observations = resp.json().get("observations", [])
-        return round(sum(obs.get('precipitation', 0) for obs in observations if obs.get('precipitation') is not None),
-                     2)
+        resp = requests.get(url, timeout=10)
+        obs = resp.json().get("observations", [])
+        precip = sum(o.get('precipitation', 0) for o in obs if o.get('precipitation') is not None)
+        temps = [o['airTemperature'] for o in obs if o.get('airTemperature') is not None]
+        avg_t = sum(temps) / len(temps) if temps else 0
+        return round(precip, 2), round(avg_t, 2)
     except Exception:
-        pass
-    return 0
+        return 0, 0
 
 
-# --- FILE MANAGEMENT ---
+# --- COMPLEX FEATURE ENGINEERING (Eq. 9-23) ---
 
-def update_data_file(config: dict):
-    yesterday = datetime.now().date() - timedelta(days=1)
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
-    data_file = config['data_file']
-
-    if os.path.exists(data_file):
-        df_existing = pd.read_csv(data_file)
-        if yesterday_str in df_existing['timestamp'].values: return
-    else:
-        cols = ['timestamp', 'water_level_cm'] + [f'precip_{c}_mm' for c in config['meteo_stations_codes']]
-        pd.DataFrame(columns=cols).to_csv(data_file, index=False)
-
-    wl = fetch_water_level_average(config['hydro_station'], yesterday)
-    precip = {f'precip_{c}_mm': fetch_precipitation_sum(c, yesterday) for c in config['meteo_stations_codes']}
-
-    if wl is None: return
-    pd.DataFrame([{'timestamp': yesterday_str, 'water_level_cm': wl, **precip}]).to_csv(data_file, mode='a',
-                                                                                        header=False, index=False)
-
-
-# --- ANFIS & FEATURES ---
-
-def prepare_features(df, config):
-    df = df.copy()
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df = df.drop_duplicates(subset='timestamp', keep='last').set_index('timestamp').asfreq('D').ffill()
-    for s in config['meteo_stations_short']:
-        c = f'precip_{s}-ams_mm'
-        if c in df.columns:
-            for win, lag in [(1, '12h'), (1, '24h'), (2, '48h'), (3, '72h')]:
-                df[f'precip_{s}_lag_{lag}'] = df[c].rolling(window=win, min_periods=1).sum()
-    return df
-
-
-def build_anfis(num_inputs, num_mfs):
-    invardefs = [(f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]) for i in
-                 range(num_inputs)]
-    return AnfisNet('Model', invardefs, ['y'], hybrid=True)
-
-
-# --- LLM ---
-
-def generate_gemini_report(config, current_level, predicted_change, projected_level, rain_24h):
-    if client is None: return "AI Analysis unavailable (Client not initialized)."
-    lvl_mod, lvl_high, lvl_severe = config['risk_levels']
-    risk_level = "LOW"
-    if projected_level >= lvl_severe:
-        risk_level = "SEVERE"
-    elif projected_level >= lvl_high:
-        risk_level = "HIGH"
-    elif projected_level >= lvl_mod:
-        risk_level = "MODERATE"
-
-    prompt = f"""
-    Act as a Hydrology Analyst for {config['display_name']}.
-    LIVE TELEMETRY:
-    - Current Level: {current_level:.2f} cm (Latest Snapshot)
-    - 24h Rain: {rain_24h:.2f} mm
-    - Forecast Change: {predicted_change:+.2f} cm
-    - Forecast Level: {projected_level:.2f} cm
-    - Risk: {risk_level}
-    Write a 2-sentence status update for residents. Mention if the water is rising, falling, or stable.
+def prepare_complex_features(df, config):
     """
-    try:
-        return client.models.generate_content(model=GEMINI_MODEL, contents=prompt).text
-    except Exception as e:
-        return f"AI Analysis unavailable: {str(e)}"
+    Implements recursive API memory, Seasonal Cosine, and Snowmelt logic.
+    """
+    df = df.copy().sort_values('timestamp')
+    p_cols = [c for c in df.columns if 'precip' in c]
+    df['Pt'] = df[p_cols].mean(axis=1)  # Pt: current precipitation
+
+    # API_t = Pt + k * API_t-1
+    api_vals, current_api = [], 0
+    for p in df['Pt']:
+        current_api = p + (K_DECAY * current_api)
+        api_vals.append(current_api)
+    df['API_t'] = api_vals
+
+    # API Normalization (Eq. 10)
+    a_min, a_max = df['API_t'].min(), df['API_t'].max()
+    df['API_norm'] = (df['API_t'] - a_min) / (a_max - a_min) if a_max != a_min else 0
+
+    # Season_cos = cos(2*pi*d / 365)
+    d = pd.to_datetime(df['timestamp']).dt.dayofyear
+    df['S_t'] = np.cos((2 * np.pi * d) / 365)
+
+    # Snowmelt Index (SMI_t)
+    t_cols = [c for c in df.columns if 'temp' in c]
+    if t_cols:
+        avg_temp = df[t_cols].mean(axis=1)
+        df['SMI_t'] = avg_temp.apply(lambda x: max(0, x * 2.5) if x > 0 else 0)
+    else:
+        df['SMI_t'] = 0
+
+    # Trend Persistence (delta_WL_t)
+    df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
+    return df
 
 
 # --- PREDICTION JOB ---
 
 def run_prediction_job(config):
-    print(f"--- Running Prediction for {config['name']} ---")
+    logger.info(f"--- Running Prediction for {config['display_name']} ---")
     try:
+        # 1. Initialize data file if empty
+        if not os.path.exists(config["data_file"]):
+            pd.DataFrame(columns=['timestamp', 'water_level_cm']).to_csv(config["data_file"], index=False)
+
+        # 2. Build ANFIS (Matches x0-x4 naming and 5-input logic)
         with open(config["config_json_path"], "r") as f:
-            model_config = json.load(f)
-        scaler_X = joblib.load(config["scaler_x_path"])
-        scaler_y = joblib.load(config["scaler_y_path"])
-        model = build_anfis(model_config["num_inputs"], model_config["num_mfs"])
+            m_cfg = json.load(f)
+
+        invardefs = [
+            (f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(m_cfg["num_mfs"])]) for
+            i in range(5)]
+        model = AnfisNet('Complex Flood Model', invardefs, ['y'], hybrid=True)
+
         ckpt = torch.load(config["anfis_model_path"], map_location="cpu")
         model.load_state_dict(ckpt['model_state_dict'])
-        model.coeff = ckpt['consequent_coeffs']
+        model.coeff = ckpt.get('consequent_coeffs') or ckpt.get('coeff')
         model.eval()
 
-        today = datetime.now().date()
+        # 3. Get Live Data
         live_wl = fetch_water_level_latest(config["hydro_station"])
-        live_precip = {f'precip_{c}_mm': fetch_precipitation_sum(c, today) for c in config['meteo_stations_codes']}
+        if live_wl is None: return
 
-        if live_wl is None:
-            print("❌ No live water level found.")
-            return
+        live_row = {'timestamp': datetime.now().strftime("%Y-%m-%d"), 'water_level_cm': live_wl}
+        for s in config['meteo_stations']:
+            p, t = fetch_meteo_latest(s)
+            live_row[f'precip_{s}_mm'], live_row[f'temp_{s}_c'] = p, t
+            time.sleep(0.5)
 
+        # 4. Feature Extraction
         df_hist = pd.read_csv(config["data_file"])
-        live_row = pd.DataFrame([{'timestamp': today.strftime("%Y-%m-%d"), 'water_level_cm': live_wl, **live_precip}])
-        df_comb = pd.concat([df_hist, live_row], ignore_index=True)
+        df_comb = pd.concat([df_hist, pd.DataFrame([live_row])], ignore_index=True).drop_duplicates('timestamp')
+        df_feats = prepare_complex_features(df_comb, config)
 
-        features_df = prepare_features(df_comb, config)
-        last_row = features_df.iloc[-1:]
+        # Vector: [API_norm, S_t, SMI_t, Pt, delta_WL_t]
+        X_scaled = joblib.load(config["scaler_x_path"]).transform(
+            df_feats.iloc[-1:][['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']].values)
 
-        features_list = model_config["features_list"]
-        X_unscaled = last_row[features_list].values
-
-        if "water_level_cm" in features_list:
-            idx = features_list.index("water_level_cm")
-            X_unscaled[0, idx] = live_wl
-
-        if np.isnan(X_unscaled).any(): return
-
-        X_scaled = scaler_X.transform(X_unscaled)
         with torch.no_grad():
-            pred_chg = scaler_y.inverse_transform(model(torch.from_numpy(X_scaled).float()).numpy())[0, 0]
+            pred_chg = \
+            joblib.load(config["scaler_y_path"]).inverse_transform(model(torch.from_numpy(X_scaled).float()).numpy())[
+                0, 0]
 
-        pred_level = live_wl + pred_chg
-
-        rain_col = [c for c in features_list if 'lag_24h' in c]
-        rain_24h = last_row[rain_col[0]].iloc[0] if rain_col else 0
-        report = generate_gemini_report(config, live_wl, pred_chg, pred_level, rain_24h)
-
-        today_str = today.strftime("%Y-%m-%d")
-        tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-
+        # 5. Save Log
+        tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         log_data = {}
         if os.path.exists(config["predictions_log_path"]):
-            with open(config["predictions_log_path"], 'r') as f:
-                try:
-                    log_data = json.load(f)
-                except:
-                    log_data = {}
+            with open(config["predictions_log_path"], 'r') as f: log_data = json.load(f)
 
-        log_data.setdefault(today_str, {})['actual'] = live_wl
-        log_data.setdefault(tomorrow_str, {})['predicted'] = pred_level
-        log_data.setdefault(tomorrow_str, {})['report'] = report
+        log_data.setdefault(datetime.now().strftime("%Y-%m-%d"), {})['actual'] = live_wl
+        log_data.setdefault(tomorrow_s, {})['predicted'] = round(live_wl + pred_chg, 2)
+        log_data.setdefault(tomorrow_s, {})['report'] = f"Forecasted level is {live_wl + pred_chg:.2f} cm."
 
         with open(config["predictions_log_path"], 'w') as f:
             json.dump(log_data, f, indent=4)
-        print(f"✅ {config['name']} Forecast Updated: {live_wl} -> {pred_level:.2f}")
+        logger.info(f"✅ Prediction Archived: {live_wl + pred_chg:.2f}")
 
     except Exception as e:
-        print(f"❌ Error {config['name']}: {e}")
-
-
-# --- SCHEDULER TASK WRAPPER ---
-
-def scheduled_auto_prediction():
-    """ Runs automatically at xx:05 """
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Using logging to ensure it shows in console despite buffering
-    logging.info(f"\n⏰ [Scheduler] Automatic Job Triggered at {ts}")
-    try:
-        update_data_file(MINIJA_CONFIG)
-        update_data_file(DANE_CONFIG)
-        run_prediction_job(MINIJA_CONFIG)
-        run_prediction_job(DANE_CONFIG)
-        logging.info("✅ [Scheduler] Cycle finished.\n")
-    except Exception as e:
-        logging.error(f"❌ [Scheduler] Error: {e}\n")
+        logger.error(f"Prediction Job Failed: {e}")
 
 
 # --- ROUTES ---
@@ -320,102 +193,37 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/api/run_predictions', methods=['POST'])
-def run_predictions_api():
-    """ Manual Trigger from Button """
-    scheduled_auto_prediction()
-    return jsonify({"status": "ok"})
-
-
 @app.route('/api/data')
 def get_data_api():
     river = request.args.get('river', 'minija')
     config = RIVER_CONFIGS.get(river)
-    if not config: return jsonify({"error": "Invalid river"}), 404
+    if not config: return jsonify({"error": "River config missing"}), 404
 
-    try:
-        today = datetime.now().date()
-        today_str = today.strftime("%Y-%m-%d")
-        tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    log_data = {}
+    if os.path.exists(config["predictions_log_path"]):
+        with open(config["predictions_log_path"], 'r') as f: log_data = json.load(f)
 
-        real_time_level = fetch_water_level_latest(config['hydro_station'])
+    today_s = datetime.now().strftime("%Y-%m-%d")
+    tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        # Fallback to log if live fetch fails
-        log_data = {}
-        if os.path.exists(config["predictions_log_path"]):
-            with open(config["predictions_log_path"], 'r') as f:
-                try:
-                    log_data = json.load(f)
-                except:
-                    log_data = {}
-
-        if real_time_level is None:
-            real_time_level = log_data.get(today_str, {}).get('actual', 0)
-
-        pred_level = log_data.get(tomorrow_str, {}).get('predicted', 0)
-        ai_report = log_data.get(tomorrow_str, {}).get('report', "No report available.")
-
-        df = pd.read_csv(config["data_file"])
-        df_feats = prepare_features(df, config)
-        last_row = df_feats.iloc[-1:]
-        feats = {}
-        for s in config['meteo_stations_short']:
-            feats[f"precip_{s}_lag_24h"] = float(last_row.get(f'precip_{s}_lag_24h', 0))
-
-        lvl_mod, lvl_high, lvl_severe = config['risk_levels']
-        risk = 'LOW'
-        if pred_level >= lvl_severe:
-            risk = 'SEVERE'
-        elif pred_level >= lvl_high:
-            risk = 'HIGH'
-        elif pred_level >= lvl_mod:
-            risk = 'MODERATE'
-
-        trend = 'Rising' if (pred_level - real_time_level) > 10 else 'Falling' if (
-                                                                                              pred_level - real_time_level) < -10 else 'Stable'
-
-        hist_data = []
-        for i in range(30):
-            d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-            if d in log_data: hist_data.append({'date': d, **log_data[d]})
-        hist_data.append({'date': tomorrow_str, **log_data.get(tomorrow_str, {})})
-        hist_data.sort(key=lambda x: x['date'])
-
-        return jsonify({
-            "riverName": config['display_name'],
-            "lastKnownLevel": real_time_level,
-            "predictedNextDayLevel": pred_level,
-            "aiReport": ai_report,
-            "liveFeatures": feats,
-            "historicalData": hist_data,
-            "risk": {"level": risk},
-            "trend": {"text": trend},
-            "lastUpdated": datetime.now().isoformat()
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "riverName": config['display_name'],
+        "lastKnownLevel": log_data.get(today_s, {}).get('actual', 0),
+        "predictedNextDayLevel": log_data.get(tomorrow_s, {}).get('predicted', 0),
+        "aiReport": log_data.get(tomorrow_s, {}).get('report', "No forecast available yet."),
+        "historicalData": [{"date": k, "actual": v.get('actual'), "predicted": v.get('predicted')} for k, v in
+                           sorted(log_data.items())][-30:],
+        "lastUpdated": datetime.now().isoformat()
+    })
 
 
-# --- INITIALIZE SCHEDULER & RUN ---
+# --- SCHEDULER & STARTUP ---
 
 scheduler = BackgroundScheduler()
-
-# 1. Add the cron job (Hourly at minute 05)
-scheduler.add_job(func=scheduled_auto_prediction, trigger="cron", minute="05", id="hourly_prediction")
-
-# 2. STARTUP CHECK: Print exactly when the job will run
-# This will show up in your console when you run 'python app.py'
+scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG), trigger="cron", minute="05")
 scheduler.start()
-atexit.register(lambda: scheduler.shutdown())
-
-print("\n---------------------------------------------------")
-print(f"⏰ Scheduler Active. Current System Time: {datetime.now()}")
-for job in scheduler.get_jobs():
-    print(f"➡️  Job '{job.id}' will run next at: {job.next_run_time}")
-print("---------------------------------------------------\n")
 
 if __name__ == "__main__":
-    # If you want to force a run ON STARTUP to verify it works, uncomment the line below:
-    # scheduled_auto_prediction()
-
-    app.run(debug=True, port=5001, use_reloader=False)
+    # TRIGGERS A RUN IMMEDIATELY ON STARTUP TO POPULATE THE FRONTEND
+    run_prediction_job(MINIJA_CONFIG)
+    app.run(debug=True, port=5003, use_reloader=False)

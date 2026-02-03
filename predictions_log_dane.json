@@ -334,10 +334,10 @@
     "2026-01-27": {
         "predicted": 54.08903796672821,
         "report": "The Dan\u0117 River is currently at 53.70 cm and is expected to rise slightly over the next 24 hours. We anticipate the level to reach 54.09 cm, and the overall risk remains low for residents.",
-        "actual": 64.9
+        "actual": 63.8
     },
     "2026-01-28": {
-        "predicted": 66.77376928329468,
-        "report": "The Dan\u0117 river level is currently 64.90 cm and is forecast to be rising over the next 24 hours. We anticipate the level reaching 66.77 cm, and the overall risk remains LOW."
+        "predicted": 65.738889503479,
+        "report": "The Dan\u0117 river level is currently 63.80 cm and is forecast to rise by 1.94 cm over the next period, reaching 65.74 cm. Despite this anticipated increase, the overall flood risk remains LOW for residents."
     }
 }

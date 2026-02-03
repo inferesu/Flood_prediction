@@ -1,147 +1,90 @@
-import json
-import random
+import json, random, torch, joblib
 import numpy as np
 import pandas as pd
-import torch
-import joblib
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import TensorDataset, DataLoader
-
-# Ensure these imports exist at runtime
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
-# --- Configuration & Reproducibility ---
+# --- Config ---
 SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
+NUM_MFS = 7
+random.seed(SEED);
+np.random.seed(SEED);
 torch.manual_seed(SEED)
-
-# --- File Paths ---
-TRAIN_DATA_FILE = 'minija_multi_precip_data_2015-2022.csv'
-MODEL_SAVE_PATH = "anfis_model.pth" # Changed to a more generic name
-SCALER_X_PATH = "scaler_X.pkl"
-SCALER_Y_PATH = "scaler_Y.pkl"
-CONFIG_JSON_PATH = "training_config.json"
-
-# --- Hyperparameters (matching original script) ---
-BATCH_SIZE = 16
-EPOCHS = 200
-LR = 1e-3
-MOMENTUM = 0.9
-NUM_MFS = 3  # Membership functions per input
-
-# --- Feature Engineering ---
-FEATURES_LIST = [
-    'precip_klaipedos_lag_12h', 'precip_klaipedos_lag_24h',
-    'precip_klaipedos_lag_48h', 'precip_klaipedos_lag_72h',
-    'precip_vezaiciu_lag_12h', 'precip_vezaiciu_lag_24h',
-    'precip_vezaiciu_lag_48h', 'precip_vezaiciu_lag_72h'
-]
+K_DECAY = 0.85  #
+TRAIN_DATA_FILE = 'minija_complex_data_2024.csv'
+FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
 TARGET = 'target_change'
 
 
-def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.sort_index(inplace=True)
-    df.interpolate(method='time', inplace=True)
+def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy().sort_index()
+    df['Pt'] = df[['precip_klaipedos-ams', 'precip_vezaiciu-ams']].mean(axis=1)  #
 
-    # Feature engineering for Klaipeda
-    df['precip_klaipedos_lag_12h'] = df['precip_klaipedos-ams_mm'].rolling(12, min_periods=1).sum()
-    df['precip_klaipedos_lag_24h'] = df['precip_klaipedos-ams_mm'].rolling(24, min_periods=1).sum()
-    df['precip_klaipedos_lag_48h'] = df['precip_klaipedos-ams_mm'].rolling(48, min_periods=1).sum()
-    df['precip_klaipedos_lag_72h'] = df['precip_klaipedos-ams_mm'].rolling(72, min_periods=1).sum()
+    # API calculation: APIt = Pt + k * APIt-1 (Eq. 9)
+    api_vals, curr_api = [], 0
+    for p in df['Pt']:
+        curr_api = p + (K_DECAY * curr_api)
+        api_vals.append(curr_api)
+    df['API_t'] = api_vals
 
-    # Feature engineering for Vezaiciai
-    df['precip_vezaiciu_lag_12h'] = df['precip_vezaiciu-ams_mm'].rolling(12, min_periods=1).sum()
-    df['precip_vezaiciu_lag_24h'] = df['precip_vezaiciu-ams_mm'].rolling(24, min_periods=1).sum()
-    df['precip_vezaiciu_lag_48h'] = df['precip_vezaiciu-ams_mm'].rolling(48, min_periods=1).sum()
-    df['precip_vezaiciu_lag_72h'] = df['precip_vezaiciu-ams_mm'].rolling(72, min_periods=1).sum()
+    # API Normalization (Eq. 10)
+    df['API_norm'] = (df['API_t'] - df['API_t'].min()) / (df['API_t'].max() - df['API_t'].min())
 
+    # Seasonality Encoding (Eq. 11)
+    d = pd.to_datetime(df['timestamp']).dt.dayofyear
+    df['S_t'] = np.cos((2 * np.pi * d) / 365)
+
+    # Snowmelt Index (SMI_t) (Eq. 17)
+    avg_t = df[['temp_klaipedos-ams', 'temp_vezaiciu-ams']].mean(axis=1)
+    df['SMI_t'] = avg_t.apply(lambda x: max(0, x * 2.5) if x > 0 else 0)
+
+    # Trend Persistence (Eq. 21)
+    df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
     df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
-    df.dropna(inplace=True)
-    return df
+
+    return df.dropna()
 
 
-def build_anfis(num_inputs: int, num_mfs: int) -> AnfisNet:
-    """
-    Creates an ANFIS model with random initialization, matching the original script.
-    """
+def build_anfis(num_inputs, num_mfs):
     invardefs = []
     for i in range(num_inputs):
-        # Using random initialization as per the first script
+        # Bell functions to capture thresholds like theta_API (Eq. 15)
         mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]
         invardefs.append((f'x{i}', mfs))
+    return AnfisNet('Flood Model', invardefs, ['y'], hybrid=True)
 
-    return AnfisNet('Flood Prediction Model', invardefs, ['y'], hybrid=True)
 
+def train_and_save():
+    df = prepare_complex_features(pd.read_csv(TRAIN_DATA_FILE))
+    X, y = df[FEATURES_LIST].values, df[TARGET].values.reshape(-1, 1)
 
-def train_and_save_model():
-    """Main function to run the training and save artifacts."""
-    print("--- Step 1: Load and Prepare Training Data ---")
-    df_train = pd.read_csv(TRAIN_DATA_FILE, parse_dates=['timestamp'], index_col='timestamp')
-    df_train = prepare_features(df_train)
+    scaler_X, scaler_y = MinMaxScaler(), MinMaxScaler()
+    X_scaled, y_scaled = scaler_X.fit_transform(X), scaler_y.fit_transform(y)
 
-    X_train = df_train[FEATURES_LIST].values
-    y_train = df_train[TARGET].values
+    joblib.dump(scaler_X, "scaler_X.pkl");
+    joblib.dump(scaler_y, "scaler_y.pkl")
 
-    print("\n--- Step 2: Scale Data and Save Scalers ---")
-    scaler_X = MinMaxScaler()
-    scaler_y = MinMaxScaler()
-    X_train_scaled = scaler_X.fit_transform(X_train)
-    y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
-
-    joblib.dump(scaler_X, SCALER_X_PATH)
-    joblib.dump(scaler_y, SCALER_Y_PATH)
-    print(f"Scalers saved to {SCALER_X_PATH} and {SCALER_Y_PATH}")
-
-    x_train_tensor = torch.from_numpy(X_train_scaled).float()
-    y_train_tensor = torch.from_numpy(y_train_scaled).float()
-    train_dl = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=BATCH_SIZE, shuffle=True)
-
-    print("\n--- Step 3: Define and Build ANFIS Model ---")
-    num_inputs = len(FEATURES_LIST)
-    model = build_anfis(num_inputs, NUM_MFS)
+    model = build_anfis(len(FEATURES_LIST), NUM_MFS)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
     criterion = torch.nn.MSELoss()
 
-    print("\n--- Step 4: Training Loop ---")
-    for epoch in range(EPOCHS):
-        for x_batch, y_batch in train_dl:
-            model.train()
+    x_t, y_t = torch.tensor(X_scaled).float(), torch.tensor(y_scaled).float()
+    loader = DataLoader(TensorDataset(x_t, y_t), batch_size=16, shuffle=True)
+
+    for epoch in range(200):
+        for xb, yb in loader:
             optimizer.zero_grad()
-            y_pred_scaled = model(x_batch)
-            loss = criterion(y_pred_scaled, y_batch)
-            loss.backward()
+            loss = criterion(model(xb), yb);
+            loss.backward();
             optimizer.step()
-
         with torch.no_grad():
-            model.fit_coeff(x_train_tensor, y_train_tensor)
+            model.fit_coeff(x_t, y_t)
+        if (epoch + 1) % 20 == 0: print(f"Epoch {epoch + 1}, Loss: {loss.item():.6f}")
 
-        if (epoch + 1) % 10 == 0:
-            with torch.no_grad():
-                y_pred_final = model(x_train_tensor)
-                epoch_loss = criterion(y_pred_final, y_train_tensor)
-                print(f'Epoch {epoch + 1}/{EPOCHS}, Loss: {epoch_loss.item():.4f}')
-
-    print("\n--- Step 5: Save Model and Configuration ---")
-    # Save a dictionary containing both the state_dict and the consequent coefficients
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'consequent_coeffs': model.coeff,
-    }, MODEL_SAVE_PATH)
-    print(f"Model and coefficients saved to {MODEL_SAVE_PATH}")
-
-    config = {
-        "features_list": FEATURES_LIST,
-        "num_inputs": len(FEATURES_LIST),
-        "num_mfs": NUM_MFS,
-        "target": TARGET
-    }
-    with open(CONFIG_JSON_PATH, "w") as f:
-        json.dump(config, f, indent=4)
-    print(f"Training config saved to {CONFIG_JSON_PATH}")
+    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "anfis_model.pth")
 
 
 if __name__ == "__main__":
-    train_and_save_model()
+    train_and_save()
