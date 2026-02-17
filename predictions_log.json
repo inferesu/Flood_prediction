@@ -451,5 +451,12 @@
     "2026-01-28": {
         "predicted": 193.05,
         "report": "Forecasted level is 193.05 cm."
+    },
+    "2026-02-17": {
+        "actual": 169.6
+    },
+    "2026-02-18": {
+        "predicted": 168.41,
+        "report": "Forecasted level is 168.41 cm."
     }
 }

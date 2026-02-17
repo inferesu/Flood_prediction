@@ -8,7 +8,7 @@ from anfis.membership import BellMembFunc
 
 # --- Config ---
 SEED = 42
-NUM_MFS = 7
+NUM_MFS = 5
 random.seed(SEED);
 np.random.seed(SEED);
 torch.manual_seed(SEED)
@@ -73,7 +73,7 @@ def train_and_save():
     x_t, y_t = torch.tensor(X_scaled).float(), torch.tensor(y_scaled).float()
     loader = DataLoader(TensorDataset(x_t, y_t), batch_size=16, shuffle=True)
 
-    for epoch in range(200):
+    for epoch in range(300):
         for xb, yb in loader:
             optimizer.zero_grad()
             loss = criterion(model(xb), yb);
