@@ -18,12 +18,11 @@ from flask import Flask, jsonify, render_template, request
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- Import ANFIS classes ---
-# Ensure these files exist in a folder named 'anfis'
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
 warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)  # Suppress the concat warning
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -54,7 +53,6 @@ RIVER_CONFIGS = {"minija": MINIJA_CONFIG}
 # --- DATA FETCHING ---
 def fetch_water_level_latest(station_code):
     """Fetches the latest measured water level (WLt)."""
-    # Look back up to 2 days in case the sensor is temporarily offline
     for days_back in [0, 1, 2]:
         date_str = (datetime.now().date() - timedelta(days=days_back)).strftime("%Y-%m-%d")
         url = f"https://api.meteo.lt/v1/hydro-stations/{station_code}/observations/measured/{date_str}"
@@ -78,9 +76,7 @@ def fetch_meteo_latest(station_code):
     try:
         resp = requests.get(url, timeout=10)
         obs = resp.json().get("observations", [])
-        # Sum precipitation for the day so far
         precip = sum(o.get('precipitation', 0) for o in obs if o.get('precipitation') is not None)
-        # Avg temperature
         temps = [o['airTemperature'] for o in obs if o.get('airTemperature') is not None]
         avg_t = sum(temps) / len(temps) if temps else 0
         return round(precip, 2), round(avg_t, 2)
@@ -93,35 +89,37 @@ def prepare_complex_features(df):
     """ Implements recursive API memory, Seasonal Cosine, and Snowmelt logic. """
     df = df.copy().sort_values('timestamp')
 
-    # Calculate Mean Precipitation across stations
+    # 1. Pt (Precipitation)
     p_cols = [c for c in df.columns if 'precip' in c]
     if p_cols:
         df['Pt'] = df[p_cols].mean(axis=1)
     else:
         df['Pt'] = 0
 
-    # API_t = Pt + k * API_t-1
+    # 2. API (Antecedent Precipitation Index)
     api_vals, current_api = [], 0
     for p in df['Pt']:
         current_api = p + (K_DECAY * current_api)
         api_vals.append(current_api)
     df['API_t'] = api_vals
 
-    # API Normalization
+    # 3. API Normalization (Eq. 10)
+    # Note: In production, we ideally use fixed min/max from training,
+    # but dynamic is acceptable for this scope if history is long enough.
     a_min, a_max = df['API_t'].min(), df['API_t'].max()
     if a_max != a_min:
         df['API_norm'] = (df['API_t'] - a_min) / (a_max - a_min)
     else:
         df['API_norm'] = 0
 
-    # Season_cos
+    # 4. Seasonality
     if 'timestamp' in df.columns:
         d = pd.to_datetime(df['timestamp']).dt.dayofyear
         df['S_t'] = np.cos((2 * np.pi * d) / 365)
     else:
         df['S_t'] = 0
 
-    # Snowmelt Index (SMI_t)
+    # 5. Snowmelt Index (SMI_t)
     t_cols = [c for c in df.columns if 'temp' in c]
     if t_cols:
         avg_temp = df[t_cols].mean(axis=1)
@@ -129,7 +127,7 @@ def prepare_complex_features(df):
     else:
         df['SMI_t'] = 0
 
-    # Trend Persistence (delta_WL_t)
+    # 6. Trend (Delta WL)
     df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
 
     return df
@@ -160,57 +158,65 @@ def run_prediction_job(config):
             p, t = fetch_meteo_latest(s)
             live_row[f'precip_{s}_mm'] = p
             live_row[f'temp_{s}_c'] = t
-            time.sleep(0.2)  # Polite delay
+            time.sleep(0.2)
 
-        # 3. Load History & Combine
+        # 3. Combine History
         df_hist = pd.read_csv(config["data_file"])
-
-        # Create DataFrame for live row
         df_live = pd.DataFrame([live_row])
-
-        # Combine (Avoid Future Warning by filtering out empty/NA before concat if needed)
         df_comb = pd.concat([df_hist, df_live], ignore_index=True)
-
-        # Remove duplicates based on timestamp (keep last)
         df_comb = df_comb.drop_duplicates(subset='timestamp', keep='last')
 
         # 4. Feature Extraction
         df_feats = prepare_complex_features(df_comb)
 
-        # 5. Load Model & Predict
-        # Load Model Config
-        with open(config["config_json_path"], "r") as f:
-            m_cfg = json.load(f)
+        # --- EXTRACT FEATURES FOR DISPLAY ---
+        # We grab the very last row (the live one)
+        last_row_df = df_feats.iloc[-1]
 
-        # Initialize Model Structure
+        # We create a dictionary of meaningful values to show on UI
+        feature_display = {
+            "Water Level": f"{live_wl} cm",
+            "Precipitation (Pt)": f"{round(last_row_df['Pt'], 2)} mm",
+            "Soil Saturation (API)": f"{round(last_row_df['API_t'], 2)} idx",
+            "Snowmelt (SMI)": f"{round(last_row_df['SMI_t'], 2)} mm",
+            "Seasonality Factor": f"{round(last_row_df['S_t'], 3)}",
+            "Trend (Delta WL)": f"{round(last_row_df['delta_WL_t'], 2)} cm"
+        }
+        # ------------------------------------
+
+        # 5. Load Model
+        # Dynamically determine num_mfs from config or default to 5
+        try:
+            with open(config["config_json_path"], "r") as f:
+                m_cfg = json.load(f)
+                num_mfs = m_cfg.get("num_mfs", 5)
+        except:
+            num_mfs = 5
+
         invardefs = [
-            (f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(m_cfg["num_mfs"])])
-            for i in range(5)
+            (f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)])
+            for i in range(5)  # 5 inputs based on your training script
         ]
         model = AnfisNet('Complex Flood Model', invardefs, ['y'], hybrid=True)
 
-        # Load Weights
         ckpt = torch.load(config["anfis_model_path"], map_location="cpu")
         model.load_state_dict(ckpt['model_state_dict'])
         model.coeff = ckpt.get('consequent_coeffs') or ckpt.get('coeff')
         model.eval()
 
-        # Scale Input
-        # Vector order: [API_norm, S_t, SMI_t, Pt, delta_WL_t]
-        last_features = df_feats.iloc[-1:][['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']].values
-        X_scaled = joblib.load(config["scaler_x_path"]).transform(last_features)
+        # Scale Input: ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
+        last_features_arr = df_feats.iloc[-1:][['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']].values
+        X_scaled = joblib.load(config["scaler_x_path"]).transform(last_features_arr)
 
         # Predict
         with torch.no_grad():
             pred_tensor = model(torch.from_numpy(X_scaled).float())
-            # Inverse Transform Output (Predicted Change)
             pred_chg = joblib.load(config["scaler_y_path"]).inverse_transform(pred_tensor.numpy())[0, 0]
 
         predicted_level = round(live_wl + pred_chg, 2)
-
-        # 6. Save Log
         tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
+        # 6. Save Log
         log_data = {}
         if os.path.exists(config["predictions_log_path"]):
             with open(config["predictions_log_path"], 'r') as f:
@@ -219,11 +225,12 @@ def run_prediction_job(config):
                 except json.JSONDecodeError:
                     log_data = {}
 
-        # Update Today (Actual)
+        # Save Actual & FEATURES for Today
         log_data.setdefault(today_str, {})
         log_data[today_str]['actual'] = live_wl
+        log_data[today_str]['features'] = feature_display  # <--- CRITICAL: Saving features here
 
-        # Update Tomorrow (Prediction)
+        # Save Prediction for Tomorrow
         log_data.setdefault(tomorrow_s, {})
         log_data[tomorrow_s]['predicted'] = predicted_level
         log_data[tomorrow_s]['report'] = f"Forecast: {predicted_level:.2f} cm (Change: {pred_chg:+.2f} cm)"
@@ -258,40 +265,39 @@ def get_data_api():
         with open(config["predictions_log_path"], 'r') as f:
             log_data = json.load(f)
 
-        # Get sorted dates
         sorted_dates = sorted(log_data.keys())
         if not sorted_dates:
             return jsonify({"error": "Log file is empty"}), 202
 
-        # Find the latest "Actual" data point
+        # Determine the "Last Actual" entry
         last_actual_date = sorted_dates[-1]
-        last_known_level = log_data[last_actual_date].get('actual', 0)
 
-        # Sometimes the latest date in the log is tomorrow (only prediction), so look back 1 day for actual
+        # If the very last entry only has a prediction (tomorrow) but no actual yet, look one day back
         if log_data[last_actual_date].get('actual') is None and len(sorted_dates) > 1:
             last_actual_date = sorted_dates[-2]
-            last_known_level = log_data[last_actual_date].get('actual', 0)
 
-        # Find the latest "Predicted" data point (usually tomorrow)
+        last_known_level = log_data.get(last_actual_date, {}).get('actual', 0)
+
+        # Retrieve the features from that "Last Actual" entry
+        current_features = log_data.get(last_actual_date, {}).get('features', {})
+
+        # Determine Tomorrow's Prediction
         tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         pred_entry = log_data.get(tomorrow_s, {})
 
-        # If tomorrow's prediction isn't generated yet, try to find the last available prediction
         predicted_val = pred_entry.get('predicted')
         report_val = pred_entry.get('report', "Forecast pending...")
 
+        # Fallback if specific date not found
         if predicted_val is None:
-            # Fallback: look at the very last entry in the log
             latest_entry = log_data.get(sorted_dates[-1], {})
             if latest_entry.get('predicted'):
                 predicted_val = latest_entry.get('predicted')
                 report_val = latest_entry.get('report')
 
-        # Prepare Historical Data for Chart
         chart_data = []
         for d in sorted_dates:
             item = log_data[d]
-            # Only send if we have at least one value
             if item.get('actual') is not None or item.get('predicted') is not None:
                 chart_data.append({
                     "date": d,
@@ -304,7 +310,8 @@ def get_data_api():
             "lastKnownLevel": last_known_level,
             "predictedNextDayLevel": predicted_val if predicted_val else 0,
             "aiReport": report_val,
-            "historicalData": chart_data[-30:],  # Last 30 days
+            "currentFeatures": current_features,  # Sends the dictionary to frontend
+            "historicalData": chart_data[-30:],
             "lastUpdated": datetime.now().isoformat()
         })
     except Exception as e:
@@ -314,17 +321,14 @@ def get_data_api():
 
 # --- SCHEDULER & STARTUP ---
 scheduler = BackgroundScheduler()
-# Run every hour at minute 5
 scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG), trigger="cron", minute="05")
 scheduler.start()
 
 if __name__ == "__main__":
-    # TRIGGERS A RUN IMMEDIATELY ON STARTUP TO POPULATE THE FRONTEND
-    # Wrap in try/except so a startup crash doesn't stop the server from booting
+    # Force a run on startup so data appears immediately
     try:
-        if not os.path.exists(MINIJA_CONFIG["predictions_log_path"]):
-            print("Running initial prediction...")
-            run_prediction_job(MINIJA_CONFIG)
+        print("Running initial prediction to populate data...")
+        run_prediction_job(MINIJA_CONFIG)
     except Exception as e:
         print(f"Startup prediction failed: {e}")
 

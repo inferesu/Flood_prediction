@@ -28,7 +28,6 @@
             <div class="mt-6">
                 <select id="river-select" class="river-select">
                     <option value="minija">Minija (Priekulė)</option>
-                    <!-- Add 'dane' back if you enable it in python later -->
                 </select>
             </div>
         </header>
@@ -77,6 +76,14 @@
                 </div>
             </div>
 
+            <!-- Live Model Inputs Grid -->
+            <div class="card">
+                <h3 class="font-semibold text-slate-300 mb-4 border-b border-slate-700 pb-2">Live Model Inputs</h3>
+                <div id="features-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="text-center p-2"><span class="text-slate-500">Loading inputs...</span></div>
+                </div>
+            </div>
+
             <!-- Chart -->
             <div class="card">
                 <h3 class="font-semibold text-slate-300 mb-4">Historical & Predicted Water Levels</h3>
@@ -91,7 +98,6 @@
     </div>
 
     <script>
-        // DOM Elements
         const ui = {
             riverSelect: document.getElementById('river-select'),
             riskCard: document.getElementById('risk-card'),
@@ -100,24 +106,14 @@
             predictedLevel: document.getElementById('predicted-level'),
             aiReportText: document.getElementById('ai-report-text'),
             lastUpdated: document.getElementById('last-updated'),
-            chartCanvas: document.getElementById('forecast-chart')
+            chartCanvas: document.getElementById('forecast-chart'),
+            featuresGrid: document.getElementById('features-grid')
         };
 
         let forecastChart = null;
 
-        // Define Risk Levels (cm)
-        const RISK_THRESHOLDS = {
-            MODERATE: 250,
-            HIGH: 400,
-            SEVERE: 550
-        };
-
-        const riskClasses = {
-            LOW: 'risk-low',
-            MODERATE: 'risk-moderate',
-            HIGH: 'risk-high',
-            SEVERE: 'risk-severe'
-        };
+        const RISK_THRESHOLDS = { MODERATE: 250, HIGH: 400, SEVERE: 550 };
+        const riskClasses = { LOW: 'risk-low', MODERATE: 'risk-moderate', HIGH: 'risk-high', SEVERE: 'risk-severe' };
 
         async function fetchRiverData() {
             const river = ui.riverSelect.value;
@@ -128,14 +124,11 @@
                 if (!res.ok) throw new Error(`Server Error: ${res.status}`);
 
                 const data = await res.json();
-
                 if (data.error) {
                     ui.aiReportText.innerText = data.error;
                     return;
                 }
-
                 updateUI(data);
-
             } catch (e) {
                 console.error(e);
                 ui.aiReportText.innerText = "Connection failed. Ensure backend is running.";
@@ -143,38 +136,46 @@
         }
 
         function updateUI(data) {
-            // 1. Text Updates
             ui.currentLevel.textContent = data.lastKnownLevel ? `${data.lastKnownLevel} cm` : "--";
             ui.predictedLevel.textContent = data.predictedNextDayLevel ? `${data.predictedNextDayLevel} cm` : "--";
             ui.aiReportText.textContent = data.aiReport || "No report available.";
             ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString();
 
-            // 2. Risk Calculation
             const pred = parseFloat(data.predictedNextDayLevel || 0);
             let level = 'LOW';
-
             if (pred >= RISK_THRESHOLDS.SEVERE) level = 'SEVERE';
             else if (pred >= RISK_THRESHOLDS.HIGH) level = 'HIGH';
             else if (pred >= RISK_THRESHOLDS.MODERATE) level = 'MODERATE';
 
-            // Reset classes
             ui.riskCard.className = `card text-center flex flex-col items-center justify-center p-6 ${riskClasses[level]}`;
             ui.riskLevel.textContent = level;
 
-            // 3. Chart Update
+            // Update Features Grid
+            ui.featuresGrid.innerHTML = '';
+            if (data.currentFeatures && Object.keys(data.currentFeatures).length > 0) {
+                // Loop through keys like "Precipitation (Pt)", "Soil Saturation (API)"
+                for (const [key, value] of Object.entries(data.currentFeatures)) {
+                    ui.featuresGrid.innerHTML += `
+                        <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700 text-center">
+                            <p class="text-xs text-slate-400 uppercase tracking-wide">${key}</p>
+                            <p class="text-xl font-bold text-white mt-1">${value}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                ui.featuresGrid.innerHTML = '<div class="col-span-3 text-center text-slate-500 py-4">No input data available.</div>';
+            }
+
             updateChart(data.historicalData || []);
         }
 
         function updateChart(historyData) {
             const ctx = ui.chartCanvas.getContext('2d');
-
             const labels = historyData.map(d => d.date);
             const actual = historyData.map(d => d.actual);
             const predicted = historyData.map(d => d.predicted);
 
-            if (forecastChart) {
-                forecastChart.destroy();
-            }
+            if (forecastChart) forecastChart.destroy();
 
             forecastChart = new Chart(ctx, {
                 type: 'line',
@@ -184,7 +185,7 @@
                         {
                             label: 'Actual Water Level',
                             data: actual,
-                            borderColor: '#3B82F6', // Blue
+                            borderColor: '#3B82F6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderWidth: 2,
                             tension: 0.3,
@@ -193,7 +194,7 @@
                         {
                             label: 'Predicted',
                             data: predicted,
-                            borderColor: '#A855F7', // Purple
+                            borderColor: '#A855F7',
                             borderDash: [5, 5],
                             borderWidth: 2,
                             tension: 0.3
@@ -203,31 +204,18 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: { labels: { color: '#cbd5e1' } }
-                    },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { color: '#cbd5e1' } } },
                     scales: {
-                        y: {
-                            grid: { color: '#334155' },
-                            ticks: { color: '#94a3b8' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8' }
-                        }
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
                     }
                 }
             });
         }
 
-        // Initialize
         ui.riverSelect.addEventListener('change', fetchRiverData);
         window.addEventListener('DOMContentLoaded', fetchRiverData);
-
     </script>
 </body>
 </html>
