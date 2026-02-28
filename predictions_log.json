@@ -91,18 +91,18 @@
     "2026-02-28": {
         "predicted": 205.73,
         "report": "Forecast: 205.73 cm (Change: +15.13 cm)",
-        "actual": 192.8,
+        "actual": 194,
         "features": {
-            "Water Level": "192.8 cm",
+            "Water Level": "194 cm",
             "Precipitation (Pt)": "0.0 mm",
             "Soil Saturation (API)": "0.0 idx",
-            "Snowmelt (SMI)": "5.6 mm",
+            "Snowmelt (SMI)": "11.49 mm",
             "Seasonality Factor": "0.527",
-            "Trend (Delta WL)": "23.2 cm"
+            "Trend (Delta WL)": "24.4 cm"
         }
     },
     "2026-03-01": {
-        "predicted": 208.56,
-        "report": "Forecast: 208.56 cm (Change: +15.76 cm)"
+        "predicted": 213.32,
+        "report": "Forecast: 213.32 cm (Change: +19.32 cm)"
     }
 }
