@@ -12,6 +12,97 @@
     },
     "2026-02-22": {
         "predicted": 171.85,
-        "report": "Forecast: 171.85 cm (Change: -0.65 cm)"
+        "report": "Forecast: 171.85 cm (Change: -0.65 cm)",
+        "actual": 176.9,
+        "features": {
+            "Water Level": "176.9 cm",
+            "Precipitation (Pt)": "0.75 mm",
+            "Soil Saturation (API)": "0.75 idx",
+            "Snowmelt (SMI)": "0.61 mm",
+            "Seasonality Factor": "0.612",
+            "Trend (Delta WL)": "7.3 cm"
+        }
+    },
+    "2026-02-23": {
+        "predicted": 166.29,
+        "report": "Forecast: 166.29 cm (Change: -10.61 cm)",
+        "actual": 181.5,
+        "features": {
+            "Water Level": "181.5 cm",
+            "Precipitation (Pt)": "3.15 mm",
+            "Soil Saturation (API)": "3.15 idx",
+            "Snowmelt (SMI)": "0.99 mm",
+            "Seasonality Factor": "0.598",
+            "Trend (Delta WL)": "11.9 cm"
+        }
+    },
+    "2026-02-24": {
+        "predicted": 184.66,
+        "report": "Forecast: 184.66 cm (Change: +3.16 cm)",
+        "actual": 186.9,
+        "features": {
+            "Water Level": "186.9 cm",
+            "Precipitation (Pt)": "0.15 mm",
+            "Soil Saturation (API)": "0.15 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.584",
+            "Trend (Delta WL)": "17.3 cm"
+        }
+    },
+    "2026-02-25": {
+        "predicted": 175.36,
+        "report": "Forecast: 175.36 cm (Change: -11.54 cm)",
+        "actual": 188.8,
+        "features": {
+            "Water Level": "188.8 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.57",
+            "Trend (Delta WL)": "19.2 cm"
+        }
+    },
+    "2026-02-26": {
+        "predicted": 200.04,
+        "report": "Forecast: 200.04 cm (Change: +11.24 cm)",
+        "actual": 189.7,
+        "features": {
+            "Water Level": "189.7 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.556",
+            "Trend (Delta WL)": "20.1 cm"
+        }
+    },
+    "2026-02-27": {
+        "predicted": 201.35,
+        "report": "Forecast: 201.35 cm (Change: +11.65 cm)",
+        "actual": 190.6,
+        "features": {
+            "Water Level": "190.6 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "7.68 mm",
+            "Seasonality Factor": "0.542",
+            "Trend (Delta WL)": "21.0 cm"
+        }
+    },
+    "2026-02-28": {
+        "predicted": 205.73,
+        "report": "Forecast: 205.73 cm (Change: +15.13 cm)",
+        "actual": 192.8,
+        "features": {
+            "Water Level": "192.8 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "5.6 mm",
+            "Seasonality Factor": "0.527",
+            "Trend (Delta WL)": "23.2 cm"
+        }
+    },
+    "2026-03-01": {
+        "predicted": 208.56,
+        "report": "Forecast: 208.56 cm (Change: +15.76 cm)"
     }
 }

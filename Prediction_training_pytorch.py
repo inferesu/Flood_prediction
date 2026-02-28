@@ -9,6 +9,7 @@ from anfis.membership import BellMembFunc
 # --- Config ---
 SEED = 42
 NUM_MFS = 5
+NUM_EPOCHS = 300
 random.seed(SEED);
 np.random.seed(SEED);
 torch.manual_seed(SEED)

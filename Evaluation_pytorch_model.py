@@ -114,6 +114,22 @@ def evaluate():
     print(f"MAE   : {mae:.3f} cm")
     print(f"R²    : {r2:.4f}")
 
+    # ---- MODEL INTERPRETATION SECTION ----
+    extract_membership_functions(model, features)
+    print_sample_rules(model, features, num_mfs, n_show=5)
+    rank_rules_by_activation(model, Xs, num_mfs, features, top_k=10)
+    save_rules_to_csv(model, features, num_mfs)
+    rank_least_activated_rules(model, Xs, num_mfs, features, bottom_k=10)
+    rule_activation_statistics(model, Xs)
+    rank_rules_by_activation(model, Xs, num_mfs, features, top_k=10)
+    flood_event_rule_analysis(model, Xs, wl_true,
+                              num_mfs, features,
+                              threshold_percentile=90,
+                              top_k=5)
+    check_membership_spread(model)
+    feature_importance_via_coefficients(model, Xs, features)
+    membership_overlap_index(model)
+    rule_usage_entropy(model, Xs)
     # Save results
     out = pd.DataFrame({
         "timestamp": df["timestamp"],
@@ -126,6 +142,318 @@ def evaluate():
     print("\nSaved to anfis_predictions.csv")
     print(out.head())
 
+def decode_rule_index(rule_index, num_mfs, num_inputs):
+    indices = []
+    for _ in range(num_inputs):
+        indices.append(rule_index % num_mfs)
+        rule_index //= num_mfs
+    return list(reversed(indices))
+def extract_membership_functions(model, feature_names):
+    print("\n=== MEMBERSHIP FUNCTIONS ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs  # OrderedDict
+
+    for i, (var_name, var_obj) in enumerate(variables.items()):
+        print(f"\nInput: {feature_names[i]}")
+
+        for j, mf in enumerate(var_obj.mfdefs.values()):
+            print(f"  MF_{j}: "
+                  f"a={mf.a.item():.4f}, "
+                  f"b={mf.b.item():.4f}, "
+                  f"c={mf.c.item():.4f}")
+def print_sample_rules(model, feature_names, num_mfs, n_show=5):
+    print("\n=== SAMPLE FUZZY RULES ===")
+
+    coeffs = model.coeff.detach().numpy()
+    n_inputs = len(feature_names)
+    n_rules = coeffs.shape[0]
+
+    for r in range(min(n_show, n_rules)):
+        mf_indices = decode_rule_index(r, num_mfs, n_inputs)
+
+        print(f"\nRule {r}:")
+        print("IF")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+        print("THEN")
+
+        # --- CASE 1: Zero-order Sugeno ---
+        if coeffs.ndim == 2 and coeffs.shape[1] == 1:
+            bias = coeffs[r, 0]
+            print(f"   y = {bias:.4f}")
+
+        # --- CASE 2: First-order Sugeno ---
+        elif coeffs.ndim == 2:
+            terms = []
+            for i, feature in enumerate(feature_names):
+                coef_value = coeffs[r, i]
+                terms.append(f"{coef_value:.3f}*{feature}")
+
+            bias = coeffs[r, -1]
+            print("   y = " + " + ".join(terms) + f" + {bias:.3f}")
+
+        else:
+            print("Unexpected coefficient shape:", coeffs.shape)
+def rank_rules_by_activation(model, X_scaled, num_mfs, feature_names, top_k=10):
+    print("\n=== MOST ACTIVATED RULES ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+
+        # Step 1: Fuzzify inputs
+        fuzzified = model.layer['fuzzify'](X_tensor)
+
+        # Step 2: Compute rule firing strengths
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    top_indices = np.argsort(avg_activation)[-top_k:][::-1]
+
+    n_inputs = len(feature_names)
+
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"\nRank {rank+1} — Rule {rule_id} "
+              f"(Avg activation={avg_activation[rule_id]:.6f})")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+def save_rules_to_csv(model, feature_names, num_mfs):
+    coeffs = model.coeff.detach().numpy()
+    n_rules = coeffs.shape[0]
+    n_inputs = len(feature_names)
+
+    rows = []
+
+    for r in range(n_rules):
+        mf_indices = decode_rule_index(r, num_mfs, n_inputs)
+        row = {"rule_id": r}
+
+        # Save MF indices
+        for i, feature in enumerate(feature_names):
+            row[f"{feature}_MF"] = mf_indices[i]
+
+        # Zero-order Sugeno → only bias
+        row["rule_output_constant"] = coeffs[r, 0]
+
+        rows.append(row)
+
+    pd.DataFrame(rows).to_csv("anfis_rule_base.csv", index=False)
+    print("\nFull rule base saved to anfis_rule_base.csv")
+
+def rank_least_activated_rules(model, X_scaled, num_mfs, feature_names, bottom_k=10):
+    print("\n=== LEAST ACTIVATED RULES ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    bottom_indices = np.argsort(avg_activation)[:bottom_k]
+
+    n_inputs = len(feature_names)
+
+    for rank, rule_id in enumerate(bottom_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"\nRank {rank+1} — Rule {rule_id} "
+              f"(Avg activation={avg_activation[rule_id]:.8f})")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+def rule_activation_statistics(model, X_scaled):
+    print("\n=== RULE ACTIVATION STATISTICS ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+
+    print(f"Total rules: {len(avg_activation)}")
+    print(f"Max activation: {avg_activation.max():.6f}")
+    print(f"Mean activation: {avg_activation.mean():.6f}")
+    print(f"Median activation: {np.median(avg_activation):.6f}")
+
+    dead_rules = np.sum(avg_activation < 1e-4)
+    print(f"Near-zero activation rules (<1e-4): {dead_rules}")
+
+def rank_rules_by_contribution(model, X_scaled, num_mfs, feature_names, top_k=10):
+    print("\n=== MOST INFLUENTIAL RULES (Activation × Output) ===")
+
+    coeffs = model.coeff.detach().numpy()
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+
+    # Zero-order assumption
+    rule_outputs = coeffs[:, 0]
+
+    contribution = np.abs(avg_activation * rule_outputs)
+    top_indices = np.argsort(contribution)[-top_k:][::-1]
+
+    n_inputs = len(feature_names)
+
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"\nRank {rank+1} — Rule {rule_id}")
+        print(f"Contribution score: {contribution[rule_id]:.6f}")
+        print(f"Output constant: {rule_outputs[rule_id]:.4f}")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+
+
+def flood_event_rule_analysis(model, X_scaled, wl_true,
+                              num_mfs, feature_names,
+                              threshold_percentile=90,
+                              top_k=5):
+
+    print("\n=== FLOOD EVENT RULE ANALYSIS ===")
+
+    threshold = np.percentile(wl_true, threshold_percentile)
+    flood_mask = wl_true >= threshold
+
+    print(f"Flood threshold (>{threshold_percentile}th percentile): {threshold:.2f} cm")
+    print(f"Flood samples: {np.sum(flood_mask)}")
+
+    if np.sum(flood_mask) == 0:
+        print("No flood samples found.")
+        return
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled[flood_mask]).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    top_indices = np.argsort(avg_activation)[-top_k:][::-1]
+
+    n_inputs = len(feature_names)
+
+    print("\nTop rules during floods:\n")
+
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"Rank {rank+1} — Rule {rule_id}")
+        print(f"Avg flood activation: {avg_activation[rule_id]:.6f}")
+
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+
+
+
+def check_membership_spread(model):
+    print("\n=== MEMBERSHIP FUNCTION SPREAD CHECK ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs
+
+    for var_name, var_obj in variables.items():
+        centers = [mf.c.item() for mf in var_obj.mfdefs.values()]
+        spread = max(centers) - min(centers)
+
+        print(f"{var_name}: center spread = {spread:.4f}")
+
+def feature_importance_via_coefficients(model, X_scaled, feature_names):
+    print("\n=== FEATURE IMPORTANCE (Activation × Coefficient) ===")
+
+    coeffs = model.coeff.detach().numpy()
+
+    print("Coefficient tensor shape:", coeffs.shape)
+
+    # Handle 3D coeff tensor
+    if coeffs.ndim == 3:
+        # assume (n_rules, n_outputs, n_coeffs)
+        coeffs = coeffs[:, 0, :]   # take first output
+
+    n_rules, n_coeffs = coeffs.shape
+    n_inputs = len(feature_names)
+
+    # If bias exists, last column is constant term
+    has_bias = (n_coeffs == n_inputs + 1)
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+
+    importance = np.zeros(n_inputs)
+
+    for r in range(n_rules):
+        for i in range(n_inputs):
+            importance[i] += abs(avg_activation[r] * coeffs[r, i])
+
+    importance = importance / importance.sum()
+
+    for i, feature in enumerate(feature_names):
+        print(f"{feature}: {importance[i]:.4f}")
+
+def membership_overlap_index(model, resolution=200):
+    print("\n=== MEMBERSHIP OVERLAP INDEX ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs
+
+    x_grid = np.linspace(0, 1, resolution)
+
+    for var_name, var_obj in variables.items():
+        mfs = list(var_obj.mfdefs.values())
+        overlaps = []
+
+        for i in range(len(mfs) - 1):
+            mu1 = np.array([mfs[i](torch.tensor([x])).item() for x in x_grid])
+            mu2 = np.array([mfs[i+1](torch.tensor([x])).item() for x in x_grid])
+
+            overlap = np.trapz(np.minimum(mu1, mu2), x_grid)
+            overlaps.append(overlap)
+
+        avg_overlap = np.mean(overlaps)
+        print(f"{var_name}: average adjacent overlap = {avg_overlap:.4f}")
+
+def rule_usage_entropy(model, X_scaled):
+    print("\n=== RULE USAGE ENTROPY ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    total = avg_activation.sum()
+
+    if total == 0:
+        print("No rule activation detected.")
+        return
+
+    p = avg_activation / total
+    p = p[p > 0]
+
+    entropy = -np.sum(p * np.log(p))
+    max_entropy = np.log(len(avg_activation))
+
+    normalized_entropy = entropy / max_entropy
+
+    print(f"Entropy: {entropy:.4f}")
+    print(f"Normalized entropy: {normalized_entropy:.4f}")
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
