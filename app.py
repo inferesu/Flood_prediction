@@ -49,6 +49,43 @@ MINIJA_CONFIG = {
 
 RIVER_CONFIGS = {"minija": MINIJA_CONFIG}
 
+MF_LABELS = {
+    "API_norm": {
+        0: "Low",
+        1: "Medium",
+        2: "Extreme",
+        3: "High",
+        4: "Very High"
+    },
+    "S_t": {
+        0: "Late Winter / November",
+        1: "Mid Spring",
+        2: "Late January / December",
+        3: "Mid Spring / Late October",
+        4: "Early Spring / Late October"
+    },
+    "SMI_t": {
+        0: "Extreme",
+        1: "Very High",
+        2: "Medium",
+        3: "Low",
+        4: "High"
+    },
+    "Pt": {
+        0: "High",
+        1: "Medium",
+        2: "Extreme",
+        3: "Very High",
+        4: "Low"
+    },
+    "delta_WL_t": {
+        0: "Very High",
+        1: "High",
+        2: "Medium",
+        3: "Extreme",
+        4: "Low"
+    }
+}
 
 # --- DATA FETCHING ---
 def fetch_water_level_latest(station_code):
@@ -132,7 +169,37 @@ def prepare_complex_features(df):
 
     return df
 
+def extract_strongest_rule(model, X_scaled, num_mfs):
+    """
+    Returns strongest fired rule ID, activation strength,
+    and decoded MF indices.
+    """
 
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+
+        # Layer 1: fuzzify
+        fuzzified = model.layer['fuzzify'](X_tensor)
+
+        # Layer 2: rule firing strengths
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    # Since we're predicting one sample → index 0
+    strengths = firing_strengths[0].numpy()
+
+    rule_id = int(np.argmax(strengths))
+    activation = float(strengths[rule_id])
+
+    # Decode rule index → MF indices per input
+    num_inputs = 5
+    mf_indices = []
+    temp = rule_id
+    for _ in range(num_inputs):
+        mf_indices.append(temp % num_mfs)
+        temp //= num_mfs
+    mf_indices = list(reversed(mf_indices))
+
+    return rule_id, activation, mf_indices
 # --- PREDICTION JOB ---
 def run_prediction_job(config):
     logger.info(f"--- Running Prediction for {config['display_name']} ---")
@@ -210,8 +277,24 @@ def run_prediction_job(config):
 
         # Predict
         with torch.no_grad():
-            pred_tensor = model(torch.from_numpy(X_scaled).float())
+            X_tensor = torch.from_numpy(X_scaled).float()
+            pred_tensor = model(X_tensor)
             pred_chg = joblib.load(config["scaler_y_path"]).inverse_transform(pred_tensor.numpy())[0, 0]
+
+        # --- Extract Strongest Fired Rule ---
+        rule_id, activation, mf_indices = extract_strongest_rule(model, X_scaled, num_mfs)
+
+        feature_names = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
+
+        rule_text_parts = []
+        for i, feature in enumerate(feature_names):
+            label = MF_LABELS[feature][mf_indices[i]]
+            rule_text_parts.append(f"{feature} is {label}")
+
+        rule_text = (
+                f"Rule #{rule_id} | Activation: {activation:.4f} | IF "
+                + " AND ".join(rule_text_parts)
+        )
 
         predicted_level = round(live_wl + pred_chg, 2)
         tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -225,10 +308,10 @@ def run_prediction_job(config):
                 except json.JSONDecodeError:
                     log_data = {}
 
-        # Save Actual & FEATURES for Today
         log_data.setdefault(today_str, {})
         log_data[today_str]['actual'] = live_wl
-        log_data[today_str]['features'] = feature_display  # <--- CRITICAL: Saving features here
+        log_data[today_str]['features'] = feature_display
+        log_data[today_str]['fired_rule'] = rule_text
 
         # Save Prediction for Tomorrow
         log_data.setdefault(tomorrow_s, {})
@@ -280,6 +363,7 @@ def get_data_api():
 
         # Retrieve the features from that "Last Actual" entry
         current_features = log_data.get(last_actual_date, {}).get('features', {})
+        current_rule = log_data.get(last_actual_date, {}).get('fired_rule', "Rule not available.")
 
         # Determine Tomorrow's Prediction
         tomorrow_s = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -310,7 +394,8 @@ def get_data_api():
             "lastKnownLevel": last_known_level,
             "predictedNextDayLevel": predicted_val if predicted_val else 0,
             "aiReport": report_val,
-            "currentFeatures": current_features,  # Sends the dictionary to frontend
+            "currentFeatures": current_features,
+            "firedRule": current_rule,# Sends the dictionary to frontend
             "historicalData": chart_data[-30:],
             "lastUpdated": datetime.now().isoformat()
         })

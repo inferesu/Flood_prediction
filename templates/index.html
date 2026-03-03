@@ -84,6 +84,24 @@
                 </div>
             </div>
 
+            <!-- Fired ANFIS Rule -->
+            <div class="card border-l-4 border-indigo-500 bg-slate-800/50">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 bg-indigo-900/30 rounded-lg text-indigo-400 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 12h8M12 8v8"/>
+                        </svg>
+                    </div>
+                    <div class="w-full">
+                        <h3 class="text-lg font-bold text-white mb-2">Dominant ANFIS Rule</h3>
+                        <p id="fired-rule-text" class="text-indigo-300 font-semibold text-sm leading-relaxed">
+                            Loading rule...
+                        </p>
+                    </div>
+                </div>
+            </div>
             <!-- Chart -->
             <div class="card">
                 <h3 class="font-semibold text-slate-300 mb-4">Historical & Predicted Water Levels</h3>
@@ -107,7 +125,8 @@
             aiReportText: document.getElementById('ai-report-text'),
             lastUpdated: document.getElementById('last-updated'),
             chartCanvas: document.getElementById('forecast-chart'),
-            featuresGrid: document.getElementById('features-grid')
+            featuresGrid: document.getElementById('features-grid'),
+            firedRuleText: document.getElementById('fired-rule-text')
         };
 
         let forecastChart = null;
@@ -140,6 +159,7 @@
             ui.predictedLevel.textContent = data.predictedNextDayLevel ? `${data.predictedNextDayLevel} cm` : "--";
             ui.aiReportText.textContent = data.aiReport || "No report available.";
             ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString();
+            ui.firedRuleText.textContent = data.firedRule || "Rule not available.";
 
             const pred = parseFloat(data.predictedNextDayLevel || 0);
             let level = 'LOW';

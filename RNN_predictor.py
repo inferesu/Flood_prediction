@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import time
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
@@ -126,7 +127,10 @@ callbacks = [
     )
 ]
 
-# ================= TRAIN =================
+# ================= TRAIN (WITH TIMING) =================
+print("\nTraining...")
+start_train = time.time()
+
 history = model.fit(
     X_train, y_train,
     epochs=200,
@@ -136,9 +140,15 @@ history = model.fit(
     verbose=2
 )
 
-# ================= PREDICT & RECONSTRUCT =================
+train_time = time.time() - start_train
+
+# ================= PREDICT & RECONSTRUCT (WITH TIMING) =================
 print("\nPredicting...")
+start_pred = time.time()
+
 y_pred_scaled = model.predict(X_test)
+
+pred_time = time.time() - start_pred
 
 # Inverse transform the predicted delta changes
 y_pred_change = scaler_y.inverse_transform(y_pred_scaled).flatten()
@@ -169,6 +179,24 @@ print(f"RMSE:  {rmse:.4f} cm")
 print(f"R2:    {r2:.4f}")
 print(f"MAE:   {mae:.4f} cm")
 print(f"NRMSE: {nrmse:.4f} ({nrmse * 100:.2f}%)")
+
+print("\n--- Computational Cost ---")
+print(f"Training Time     : {train_time:.4f} seconds")
+print(f"Total Inference   : {pred_time:.4f} seconds")
+print(f"Time per Sample   : {(pred_time / len(X_test)) * 1000:.4f} milliseconds")
+
+# ================= EXPORT FOR DM TEST =================
+# Align timestamps (we lose the first 'LOOK_BACK_PERIOD' days due to sequence creation)
+aligned_timestamps = test_df[DATE_COLUMN].iloc[LOOK_BACK_PERIOD:].values
+
+out_df = pd.DataFrame({
+    "timestamp": aligned_timestamps,
+    "WL_true": wl_true,
+    "WL_pred": wl_pred
+})
+out_df.to_csv("rnn_predictions.csv", index=False)
+print("\nSaved predictions to 'rnn_predictions.csv'.")
+
 
 # ================= PLOT =================
 plt.figure(figsize=(14, 6))

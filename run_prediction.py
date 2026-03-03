@@ -198,7 +198,36 @@ def build_anfis(num_inputs, num_mfs):
     invardefs = [(f'x{i}', [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)])
                  for i in range(num_inputs)]
     return AnfisNet('Flood Model', invardefs, ['y'], hybrid=True)
+def extract_fired_rule(model, X_scaled, feature_names):
+    """
+    Extracts the strongest fired fuzzy rule and converts it to human-readable format.
+    """
 
+    # Forward pass until layer that stores firing strengths
+    with torch.no_grad():
+        model(torch.from_numpy(X_scaled).float())
+
+    # Get normalized firing strengths (Layer 3)
+    firing_strengths = model.rule_layer.firing_strength.detach().numpy()[0]
+
+    # Identify strongest rule
+    strongest_rule_idx = np.argmax(firing_strengths)
+    strength = firing_strengths[strongest_rule_idx]
+
+    # Convert membership to linguistic labels
+    linguistic_map = ["LOW", "MEDIUM", "HIGH", "VERY HIGH", "EXTREME"]
+
+    rule_description = []
+
+    for i, feature in enumerate(feature_names):
+        # determine which MF index fired for this rule
+        mf_index = strongest_rule_idx % len(linguistic_map)
+        label = linguistic_map[mf_index % len(linguistic_map)]
+        rule_description.append(f"{feature} is {label}")
+
+    readable_rule = "IF " + " AND ".join(rule_description)
+
+    return readable_rule, strongest_rule_idx, round(float(strength), 3)
 
 def run_prediction_job(config):
     print(f"--- Predicting {config['display_name']} ---")
@@ -241,6 +270,18 @@ def run_prediction_job(config):
             pred_chg = scaler_y.inverse_transform(pred_chg_scaled)[0, 0]
 
         pred_level = live_wl + pred_chg
+
+        # ---- Extract Fired Rule ----
+        feature_order = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
+
+        rule_text, rule_idx, rule_strength = extract_fired_rule(
+            model,
+            X_scaled,
+            feature_order
+        )
+
+        rule_explanation = f"{rule_text} THEN water level changes by {pred_chg:+.2f} cm (Rule Strength: {rule_strength})"
+
         report = generate_gemini_report(config, live_wl, pred_chg, pred_level, last_row['Pt'].iloc[0])
 
         # Log prediction
@@ -252,6 +293,7 @@ def run_prediction_job(config):
         log.setdefault(today_s, {})['actual'] = live_wl
         log.setdefault(tomorrow_s, {})['predicted'] = round(pred_level, 2)
         log.setdefault(tomorrow_s, {})['report'] = report
+        log.setdefault(tomorrow_s, {})['fired_rule'] = rule_explanation
 
         with open(config["predictions_log_path"], 'w') as f:
             json.dump(log, f, indent=4)

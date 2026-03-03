@@ -104,18 +104,47 @@
     "2026-03-01": {
         "predicted": 216.29,
         "report": "Forecast: 216.29 cm (Change: +20.79 cm)",
-        "actual": 199.9,
+        "actual": 208.1,
         "features": {
-            "Water Level": "199.9 cm",
-            "Precipitation (Pt)": "0.0 mm",
-            "Soil Saturation (API)": "0.0 idx",
-            "Snowmelt (SMI)": "3.39 mm",
+            "Water Level": "208.1 cm",
+            "Precipitation (Pt)": "0.1 mm",
+            "Soil Saturation (API)": "0.1 idx",
+            "Snowmelt (SMI)": "5.32 mm",
             "Seasonality Factor": "0.512",
-            "Trend (Delta WL)": "30.3 cm"
-        }
+            "Trend (Delta WL)": "38.5 cm"
+        },
+        "fired_rule": "Rule #1556 | Activation: 0.2558 | IF API_norm is Extreme AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High"
     },
     "2026-03-02": {
-        "predicted": 219.9,
-        "report": "Forecast: 219.90 cm (Change: +20.00 cm)"
+        "predicted": 205.09,
+        "report": "Forecast: 205.09 cm (Change: -3.01 cm)",
+        "actual": 237.6,
+        "features": {
+            "Water Level": "237.6 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "3.7 mm",
+            "Seasonality Factor": "0.498",
+            "Trend (Delta WL)": "68.0 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2926 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-03": {
+        "predicted": 279.12,
+        "report": "Forecast: 279.12 cm (Change: +41.52 cm)",
+        "actual": 253.1,
+        "features": {
+            "Water Level": "253.1 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality Factor": "0.483",
+            "Trend (Delta WL)": "15.5 cm"
+        },
+        "fired_rule": "Rule #306 | Activation: 0.2667 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High"
+    },
+    "2026-03-04": {
+        "predicted": 258.12,
+        "report": "Forecast: 258.12 cm (Change: +5.02 cm)"
     }
 }

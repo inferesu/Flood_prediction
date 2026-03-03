@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+import time
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
@@ -16,7 +17,6 @@ K_DECAY = 0.85
 TARGET = 'target_change'
 
 np.random.seed(42)
-
 
 # ================= FEATURE ENGINEERING =================
 def prepare_features(df):
@@ -108,20 +108,29 @@ model = xgb.XGBRegressor(
     min_child_weight=3,
     gamma=0.1,
     objective='reg:squarederror',
-    early_stopping_rounds=50,  # Moved here for newer XGBoost compatibility
+    early_stopping_rounds=50,
     random_state=42
 )
 
-# ================= TRAIN =================
+# ================= TRAIN (WITH TIMING) =================
+print("\nTraining...")
+start_train = time.time()
+
 model.fit(
     X_train, y_train.ravel(),
     eval_set=[(X_test, y_test.ravel())],
     verbose=False
 )
 
-# ================= PREDICT & RECONSTRUCT =================
-print("\nPredicting...")
+train_time = time.time() - start_train
+
+# ================= PREDICT & RECONSTRUCT (WITH TIMING) =================
+print("Predicting...")
+start_pred = time.time()
+
 y_pred_scaled = model.predict(X_test).reshape(-1, 1)
+
+pred_time = time.time() - start_pred
 
 # Inverse transform the predicted delta changes
 y_pred_change = scaler_y.inverse_transform(y_pred_scaled).flatten()
@@ -152,6 +161,23 @@ print(f"RMSE:  {rmse:.4f} cm")
 print(f"R2:    {r2:.4f}")
 print(f"MAE:   {mae:.4f} cm")
 print(f"NRMSE: {nrmse:.4f} ({nrmse * 100:.2f}%)")
+
+print("\n--- Computational Cost ---")
+print(f"Training Time     : {train_time:.4f} seconds")
+print(f"Total Inference   : {pred_time:.4f} seconds")
+print(f"Time per Sample   : {(pred_time / len(X_test)) * 1000:.4f} milliseconds")
+
+# ================= EXPORT FOR DM TEST =================
+# Align timestamps (we lose the first 'LOOK_BACK_PERIOD' days due to sequence creation)
+aligned_timestamps = test_df[DATE_COLUMN].iloc[LOOK_BACK_PERIOD:].values
+
+out_df = pd.DataFrame({
+    "timestamp": aligned_timestamps,
+    "WL_true": wl_true,
+    "WL_pred": wl_pred
+})
+out_df.to_csv("xgboost_predictions.csv", index=False)
+print("\nSaved predictions to 'xgboost_predictions.csv'.")
 
 # ================= PLOT =================
 plt.figure(figsize=(14, 6))

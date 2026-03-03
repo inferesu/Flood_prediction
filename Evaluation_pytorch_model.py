@@ -6,6 +6,7 @@ import joblib
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
+import scipy.stats
 
 # ---------------- PATHS ----------------
 ANFIS_MODEL_PATH = "anfis_model.pth"
@@ -113,6 +114,46 @@ def evaluate():
     print(f"NRMSE : {nrmse:.4f}")
     print(f"MAE   : {mae:.3f} cm")
     print(f"R²    : {r2:.4f}")
+
+    # ---- NEW: DIEBOLD-MARIANO TEST BLOCK ----
+    # ---- NEW: DIEBOLD-MARIANO TEST BLOCK ----
+    COMPETITOR_FILE = "rnn_predictions.csv"
+    try:
+        print("\n--- Statistical Significance (Diebold-Mariano Test) ---")
+        comp_df = pd.read_csv(COMPETITOR_FILE)
+
+        # Convert timestamps to datetime for perfect alignment
+        comp_df['timestamp'] = pd.to_datetime(comp_df['timestamp'])
+
+        # Create a temporary dataframe for ANFIS results
+        anfis_temp_df = pd.DataFrame({
+            'timestamp': df['timestamp'],
+            'wl_true_anfis': wl_true,
+            'wl_pred_anfis': wl_pred
+        })
+
+        # Merge them together based on the exact same days
+        aligned_df = pd.merge(anfis_temp_df, comp_df, on='timestamp', how='inner')
+
+        actual_aligned = aligned_df['wl_true_anfis'].values
+        anfis_aligned = aligned_df['wl_pred_anfis'].values
+        comp_aligned = aligned_df['WL_pred'].values
+
+        # Test MSE differences on the perfectly aligned arrays
+        dm_stat_mse, p_val_mse = diebold_mariano_test(actual_aligned, anfis_aligned, comp_aligned, loss='mse')
+
+        print(f"Aligned test samples : {len(actual_aligned)} (truncated to match competitor look-back)")
+        print(f"DM Statistic (MSE)   : {dm_stat_mse:.4f}")
+        print(f"P-value (MSE)        : {p_val_mse:.4f}")
+
+        if p_val_mse > 0.05:
+            print(
+                "Result: The difference in MSE between ANFIS and the competitor is NOT statistically significant (p > 0.05).")
+        else:
+            print("Result: The difference in MSE IS statistically significant (p <= 0.05).")
+
+    except FileNotFoundError:
+        print(f"Note: '{COMPETITOR_FILE}' not found. Skipping DM test.")
 
     # ---- MODEL INTERPRETATION SECTION ----
     extract_membership_functions(model, features)
@@ -454,6 +495,36 @@ def rule_usage_entropy(model, X_scaled):
 
     print(f"Entropy: {entropy:.4f}")
     print(f"Normalized entropy: {normalized_entropy:.4f}")
+
+
+# ---------------- STATISTICAL TESTING ----------------
+def diebold_mariano_test(actual, pred1, pred2, loss='mse'):
+    """
+    Calculates the Diebold-Mariano test statistic for 1-step ahead forecasts.
+    pred1: ANFIS predictions
+    pred2: Competitor predictions (e.g., RNN)
+    """
+    e1 = actual - pred1
+    e2 = actual - pred2
+
+    # Calculate the loss differential (d_t)
+    if loss == 'mse':
+        d = (e1 ** 2) - (e2 ** 2)
+    elif loss == 'mae':
+        d = np.abs(e1) - np.abs(e2)
+    else:
+        raise ValueError("Loss must be 'mse' or 'mae'")
+
+    mean_d = np.mean(d)
+
+    # For 1-step ahead forecasts, variance is simply the sample variance of d divided by N
+    var_d = np.var(d, ddof=1) / len(d)
+
+    # Calculate DM statistic and p-value
+    dm_stat = mean_d / np.sqrt(var_d)
+    p_value = 2 * (1 - scipy.stats.norm.cdf(abs(dm_stat)))
+
+    return dm_stat, p_value
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
