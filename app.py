@@ -287,13 +287,43 @@ def get_data_api():
     for d in sorted_dates:
         entry = log_data[d]
 
+        base_date = datetime.strptime(d, "%Y-%m-%d")
+
         chart_data.append({
             "date": d,
             "actual": entry.get("actual"),
-            "pred1d": entry.get("horizons", {}).get("1d", {}).get("level"),
-            "pred3d": entry.get("horizons", {}).get("3d", {}).get("level"),
-            "pred5d": entry.get("horizons", {}).get("5d", {}).get("level")
+            "pred1d": None,
+            "pred3d": None,
+            "pred5d": None
         })
+
+        # Add shifted predictions
+        if entry.get("horizons", {}).get("1d"):
+            chart_data.append({
+                "date": (base_date + timedelta(days=1)).strftime("%Y-%m-%d"),
+                "actual": None,
+                "pred1d": entry["horizons"]["1d"]["level"],
+                "pred3d": None,
+                "pred5d": None
+            })
+
+        if entry.get("horizons", {}).get("3d"):
+            chart_data.append({
+                "date": (base_date + timedelta(days=3)).strftime("%Y-%m-%d"),
+                "actual": None,
+                "pred1d": None,
+                "pred3d": entry["horizons"]["3d"]["level"],
+                "pred5d": None
+            })
+
+        if entry.get("horizons", {}).get("5d"):
+            chart_data.append({
+                "date": (base_date + timedelta(days=5)).strftime("%Y-%m-%d"),
+                "actual": None,
+                "pred1d": None,
+                "pred3d": None,
+                "pred5d": entry["horizons"]["5d"]["level"]
+            })
 
     return jsonify({
         "riverName": config['display_name'],

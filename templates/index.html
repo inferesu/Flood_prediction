@@ -160,9 +160,34 @@
                 data: {
                     labels: history.map(d => d.date),
                     datasets: [
-                        { label: 'Actual', data: history.map(d => d.actual), borderColor: '#3b82f6', tension: 0.3 },
-                        { label: '1D Pred', data: history.map(d => d.pred1d), borderColor: '#a855f7', borderDash:[5,5], tension: 0.3 }
-                    ]
+{
+    label: 'Actual',
+    data: history.map(d => d.actual),
+    borderColor: '#3b82f6',
+    tension: 0.3
+},
+{
+    label: '1D Forecast',
+    data: history.map(d => d.pred1d),
+    borderColor: '#a855f7',
+    borderDash:[5,5],
+    tension: 0.3
+},
+{
+    label: '3D Forecast',
+    data: history.map(d => d.pred3d),
+    borderColor: '#f59e0b',
+    borderDash:[6,4],
+    tension: 0.3
+},
+{
+    label: '5D Forecast',
+    data: history.map(d => d.pred5d),
+    borderColor: '#ef4444',
+    borderDash:[3,3],
+    tension: 0.3
+}
+]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
             });
