@@ -6,6 +6,8 @@
     <title>Live Flood Forecasts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Lato', sans-serif; background-color: #0f172a; color: #e2e8f0; }
@@ -59,17 +61,23 @@
                 <div class="h-80"><canvas id="forecast-chart"></canvas></div>
             </div>
         </div>
-
+        <div class="card mt-6">
+            <h3 class="font-bold text-white mb-4">Flood Risk Map</h3>
+            <div id="map" class="h-96 rounded"></div>
+        </div>
         <footer class="mt-8 text-center text-slate-500 text-xs">
             Last Updated: <span id="last-updated">--</span>
         </footer>
     </div>
 
     <script>
+        let map;
+       let marker;
         async function updateDashboard() {
             try {
                 const res = await fetch('/api/data?river=minija');
                 const data = await res.json();
+                updateMap(data);
 
                 // Update Levels
                 document.getElementById('current-level').textContent = `${data.lastKnownLevel} cm`;
@@ -104,6 +112,46 @@
         }
 
         let chart;
+        function initMap(){
+
+            map = L.map('map').setView([55.3, 23.9], 7);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+        }
+        function updateMap(data){
+
+    const lat = data.lat;
+    const lon = data.lon;
+
+    const level = data.horizons["1d"].level;
+
+    let color = "green";
+
+    if(level > 550) color = "purple";
+    else if(level > 400) color = "red";
+    else if(level > 250) color = "yellow";
+
+    const markerStyle = {
+        radius: 10,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.8
+    };
+
+    if(marker){
+        map.removeLayer(marker);
+    }
+
+    marker = L.circleMarker([lat, lon], markerStyle)
+        .addTo(map)
+        .bindPopup(`
+            <b>${data.riverName}</b><br>
+            Current: ${data.lastKnownLevel} cm<br>
+            1-Day Forecast: ${level} cm
+        `);
+}
         function renderChart(history) {
             const ctx = document.getElementById('forecast-chart').getContext('2d');
             if(chart) chart.destroy();
@@ -120,7 +168,10 @@
             });
         }
 
-        window.onload = updateDashboard;
+        window.onload = () => {
+    initMap();
+    updateDashboard();
+};
         setInterval(updateDashboard, 300000);
     </script>
 </body>

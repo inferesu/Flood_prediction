@@ -33,6 +33,8 @@ MINIJA_CONFIG = {
     "data_file": "live_data_complex.csv",
     "predictions_log_path": "predictions_log.json",
     "hydro_station": "priekules-vms",
+    "lat": 55.5546,
+    "lon": 21.3195,
     "meteo_stations": ["klaipedos-ams", "vezaiciu-ams"],
     "risk_levels": [250, 400, 550],
     "horizons": {
@@ -295,6 +297,8 @@ def get_data_api():
 
     return jsonify({
         "riverName": config['display_name'],
+        "lat": config["lat"],
+        "lon": config["lon"],
         "lastKnownLevel": last_entry.get("actual"),
         "horizons": last_entry.get("horizons"),
         "currentFeatures": last_entry.get("features"),
