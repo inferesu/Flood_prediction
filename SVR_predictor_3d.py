@@ -15,7 +15,8 @@ TEST_CSV = 'minija_complex_data_test.csv'
 DATE_COLUMN = 'timestamp'
 K_DECAY = 0.85
 
-TARGET = 'target_change'
+# MODIFIED: Predict the change over 4 days
+TARGET = 'target_change_4d'
 FEATURES = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
 
 # Apple M1 Max estimated CPU power
@@ -51,7 +52,8 @@ def prepare_features(df):
 
     df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
 
-    df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
+    # MODIFIED: Target Change shifted by 4 days
+    df['target_change_4d'] = df['water_level_cm'].shift(-4) - df['water_level_cm']
 
     return df.dropna()
 
@@ -150,7 +152,7 @@ wl_pred = wl_base + y_pred_change
 wl_true = wl_base + y_true_change
 
 # ================= EVALUATION =================
-print("\n--- Model Evaluation ---")
+print("\n--- SVR Evaluation (4D Delta-aligned) ---")
 
 mse = mean_squared_error(wl_true, wl_pred)
 rmse = np.sqrt(mse)
@@ -164,11 +166,23 @@ print(f"R2: {r2:.4f}")
 print(f"MAE: {mae:.4f} cm")
 print(f"NRMSE: {nrmse:.4f}")
 
+# ================= EXPORT FOR DM TEST =================
+# Added this block so you can compare SVR against your other 4D models later
+aligned_timestamps = test_df[DATE_COLUMN].iloc[LOOK_BACK_PERIOD:].values
+
+out_df = pd.DataFrame({
+    "timestamp": aligned_timestamps,
+    "WL_true": wl_true,
+    "WL_pred": wl_pred
+})
+out_df.to_csv("svr_predictions_4d.csv", index=False)
+print("\nSaved predictions to 'svr_predictions_4d.csv'.")
+
 # ================= PLOT =================
 plt.figure(figsize=(14,6))
-plt.plot(wl_true,label="Actual WL")
-plt.plot(wl_pred,'--',label="Predicted WL")
-plt.title("SVR Flood Prediction")
+plt.plot(wl_true,label="Actual WL (4 Days Ahead)")
+plt.plot(wl_pred,'--', alpha=0.8, label="Predicted WL (4 Days Ahead)")
+plt.title("SVR 4D Flood Prediction (Delta-aligned)")
 plt.legend()
 plt.grid(True)
 plt.show()

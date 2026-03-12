@@ -16,7 +16,8 @@ DATE_COLUMN = 'timestamp'
 K_DECAY = 0.85
 
 FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
-TARGET = 'target_change'
+# Updated target name for 3 days
+TARGET = 'target_change_3d'
 
 # Estimated M1 Max power consumption
 CPU_POWER_W = 30
@@ -52,7 +53,8 @@ def prepare_complex_features(df: pd.DataFrame):
 
     df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
 
-    df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
+    # MODIFIED: Predict 3 days ahead instead of 1
+    df['target_change_3d'] = df['water_level_cm'].shift(-3) - df['water_level_cm']
 
     return df.dropna()
 
@@ -184,15 +186,17 @@ wl_test_raw = test_df['water_level_cm'].values
 
 wl_base = []
 for i in range(len(test_df) - LOOK_BACK_PERIOD):
+    # Base level is still the last day of the look_back period
     wl_base.append(wl_test_raw[i + LOOK_BACK_PERIOD - 1])
 
 wl_base = np.array(wl_base)
 
+# Calculate final predicted and true water levels based on the 3-day change
 wl_pred = wl_base + y_pred_change
 wl_true = wl_base + y_true_change
 
 # ================= EVALUATION =================
-print("\n--- Model Evaluation ---")
+print("\n--- Model Evaluation (3D) ---")
 
 mse = mean_squared_error(wl_true, wl_pred)
 rmse = np.sqrt(mse)
@@ -211,6 +215,10 @@ print(f"Training Time : {train_time:.4f} sec")
 print(f"Inference Time: {pred_time:.4f} sec")
 
 # ================= EXPORT =================
+# We align the timestamps to the predicted target day (+3 days from the end of the lookback sequence)
+# test_df index alignment needs to match the y_true alignment.
+# We generated y for range(len(X) - look_back).
+# The sequence ends at index (i + look_back - 1), but the target is shifted forward by 3 inside the dataframe already.
 aligned_timestamps = test_df[DATE_COLUMN].iloc[LOOK_BACK_PERIOD:].values
 
 out_df = pd.DataFrame({
@@ -219,14 +227,15 @@ out_df = pd.DataFrame({
     "WL_pred": wl_pred
 })
 
-out_df.to_csv("rnn_predictions.csv", index=False)
-print("\nSaved predictions to 'rnn_predictions.csv'.")
+# MODIFIED: Output file renamed for 3D model
+out_df.to_csv("rnn_predictions_3d.csv", index=False)
+print("\nSaved predictions to 'rnn_predictions_3d.csv'.")
 
 # ================= PLOT =================
 plt.figure(figsize=(14, 6))
-plt.plot(wl_true, label="Actual WL")
-plt.plot(wl_pred, linestyle="--", alpha=0.8, label="Predicted WL")
-plt.title("LSTM Prediction of Water Level")
+plt.plot(wl_true, label="Actual WL (3 Days Ahead)")
+plt.plot(wl_pred, linestyle="--", alpha=0.8, label="Predicted WL (3 Days Ahead)")
+plt.title("LSTM 3D Prediction of Water Level")
 plt.legend()
 plt.grid(True)
 plt.show()

@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import time
+import psutil
+import os
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
@@ -16,7 +18,15 @@ K_DECAY = 0.85
 # MATCH ANFIS TARGET: Predict the change, not the absolute value
 TARGET = 'target_change'
 
+# Apple M1 Max estimated CPU power
+CPU_POWER_W = 30
+
 np.random.seed(42)
+
+process = psutil.Process(os.getpid())
+
+def get_memory_mb():
+    return process.memory_info().rss / (1024 * 1024)
 
 # ================= FEATURE ENGINEERING =================
 def prepare_features(df):
@@ -49,7 +59,6 @@ def prepare_features(df):
 
     return df.dropna()
 
-
 # ================= LOAD DATA =================
 print("Preparing training data...")
 train_df = pd.read_csv(TRAIN_CSV)
@@ -79,7 +88,6 @@ X_test_scaled = scaler_X.transform(X_test_raw)
 y_train_scaled = scaler_y.fit_transform(y_train_raw)
 y_test_scaled = scaler_y.transform(y_test_raw)
 
-
 # ================= CREATE SEQUENCES =================
 def create_flat_sequences(X, y, look_back):
     Xs, ys = [], []
@@ -88,7 +96,6 @@ def create_flat_sequences(X, y, look_back):
         # Target corresponds to the LAST step in the sequence window
         ys.append(y[i + look_back - 1])
     return np.array(Xs), np.array(ys)
-
 
 X_train, y_train = create_flat_sequences(X_train_scaled, y_train_scaled, LOOK_BACK_PERIOD)
 X_test, y_test = create_flat_sequences(X_test_scaled, y_test_scaled, LOOK_BACK_PERIOD)
@@ -112,8 +119,10 @@ model = xgb.XGBRegressor(
     random_state=42
 )
 
-# ================= TRAIN (WITH TIMING) =================
-print("\nTraining...")
+# ================= TRAIN MODEL =================
+print("\n--- Training XGBoost ---")
+
+mem_before = get_memory_mb()
 start_train = time.time()
 
 model.fit(
@@ -123,15 +132,35 @@ model.fit(
 )
 
 train_time = time.time() - start_train
+mem_after = get_memory_mb()
 
-# ================= PREDICT & RECONSTRUCT (WITH TIMING) =================
-print("Predicting...")
+energy_joules = CPU_POWER_W * train_time
+
+print("\n--- Training Resources ---")
+print(f"Training Time: {train_time:.6f} sec")
+print(f"Memory Usage: {mem_after - mem_before:.2f} MB")
+print(f"Estimated Energy: {energy_joules:.4f} Joules")
+
+# ================= INFERENCE =================
+print("\n--- Running Inference ---")
+
+mem_before = get_memory_mb()
 start_pred = time.time()
 
 y_pred_scaled = model.predict(X_test).reshape(-1, 1)
 
 pred_time = time.time() - start_pred
+mem_after = get_memory_mb()
 
+energy_inference = CPU_POWER_W * pred_time
+
+print("\n--- Inference Resources ---")
+print(f"Inference Time: {pred_time:.6f} sec")
+print(f"Time per Sample: {(pred_time/len(X_test))*1000:.6f} ms")
+print(f"Memory Usage: {mem_after - mem_before:.2f} MB")
+print(f"Estimated Energy: {energy_inference:.4f} Joules")
+
+# ================= RECONSTRUCT WATER LEVEL =================
 # Inverse transform the predicted delta changes
 y_pred_change = scaler_y.inverse_transform(y_pred_scaled).flatten()
 y_true_change = scaler_y.inverse_transform(y_test.reshape(-1, 1)).flatten()
@@ -161,11 +190,6 @@ print(f"RMSE:  {rmse:.4f} cm")
 print(f"R2:    {r2:.4f}")
 print(f"MAE:   {mae:.4f} cm")
 print(f"NRMSE: {nrmse:.4f} ({nrmse * 100:.2f}%)")
-
-print("\n--- Computational Cost ---")
-print(f"Training Time     : {train_time:.4f} seconds")
-print(f"Total Inference   : {pred_time:.4f} seconds")
-print(f"Time per Sample   : {(pred_time / len(X_test)) * 1000:.4f} milliseconds")
 
 # ================= EXPORT FOR DM TEST =================
 # Align timestamps (we lose the first 'LOOK_BACK_PERIOD' days due to sequence creation)

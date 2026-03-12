@@ -417,4 +417,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Startup prediction failed: {e}")
 
-    app.run(debug=True, port=5003, use_reloader=False)
+    app.run(debug=True, port=5000, use_reloader=False)

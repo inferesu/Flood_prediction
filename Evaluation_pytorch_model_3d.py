@@ -12,10 +12,11 @@ from anfis.membership import BellMembFunc
 import scipy.stats
 
 # ---------------- PATHS ----------------
-ANFIS_MODEL_PATH = "anfis_model.pth"
-SCALER_X_PATH = "scaler_X.pkl"
-SCALER_Y_PATH = "scaler_y.pkl"
-CONFIG_JSON_PATH = "training_config.json"
+# Updated paths to point to the 3D model artifacts
+ANFIS_MODEL_PATH = "anfis_model_3d.pth"
+SCALER_X_PATH = "scaler_X_3d.pkl"
+SCALER_Y_PATH = "scaler_y_3d.pkl"
+CONFIG_JSON_PATH = "training_config_3d.json" # Make sure this JSON reflects the new target!
 TEST_DATA_FILE = "minija_complex_data_test.csv"
 
 # ---------------- CONSTANTS & RESOURCE TRACKING ----------------
@@ -60,8 +61,8 @@ def prepare_features(df):
     # Trend persistence
     df["delta_WL_t"] = df["water_level_cm"].diff().fillna(0)
 
-    # Target
-    df["target_change"] = df["water_level_cm"].shift(-1) - df["water_level_cm"]
+    # Target: Modified for 3 days ahead
+    df["target_change_3d"] = df["water_level_cm"].shift(-3) - df["water_level_cm"]
 
     return df.dropna().reset_index(drop=True)
 
@@ -73,7 +74,8 @@ def build_anfis(n_inputs, n_mfs):
         mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1))
                for _ in range(n_mfs)]
         invardefs.append((f"x{i}", mfs))
-    return AnfisNet("Flood Model", invardefs, ["y"], hybrid=True)
+    # Updated model name to match the 3D training script
+    return AnfisNet("Flood Model 3D", invardefs, ["y"], hybrid=True)
 
 
 # ---------------- EVALUATION ----------------
@@ -85,7 +87,7 @@ def evaluate():
     features = config["features_list"]
     num_inputs = config["num_inputs"]
     num_mfs = config["num_mfs"]
-    target = config["target"]
+    target = config["target"] # Should be "target_change_3d" in your JSON
 
     # Load scalers
     scaler_X = joblib.load(SCALER_X_PATH)
@@ -140,7 +142,7 @@ def evaluate():
     mae = mean_absolute_error(wl_true, wl_pred)
     r2 = r2_score(wl_true, wl_pred)
 
-    print("\n--- ANFIS Flood Model Performance ---")
+    print("\n--- ANFIS 3D Flood Model Performance ---")
     print(f"MSE   : {mse:.3f}")
     print(f"RMSE  : {rmse:.3f} cm")
     print(f"NRMSE : {nrmse:.4f}")
@@ -148,7 +150,8 @@ def evaluate():
     print(f"R²    : {r2:.4f}")
 
     # ---- NEW: DIEBOLD-MARIANO TEST BLOCK ----
-    COMPETITOR_FILE = "rnn_predictions.csv"
+    # Updated competitor file expectation for the 3D baseline
+    COMPETITOR_FILE = "rnn_predictions_3d.csv"
     try:
         print("\n--- Statistical Significance (Diebold-Mariano Test) ---")
         comp_df = pd.read_csv(COMPETITOR_FILE)
@@ -179,7 +182,7 @@ def evaluate():
 
         if p_val_mse > 0.05:
             print(
-                "Result: The difference in MSE between ANFIS and the competitor is NOT statistically significant (p > 0.05).")
+                "Result: The difference in MSE between ANFIS 3D and the competitor is NOT statistically significant (p > 0.05).")
         else:
             print("Result: The difference in MSE IS statistically significant (p <= 0.05).")
 
@@ -193,7 +196,6 @@ def evaluate():
     save_rules_to_csv(model, features, num_mfs)
     rank_least_activated_rules(model, Xs, num_mfs, features, bottom_k=10)
     rule_activation_statistics(model, Xs)
-    rank_rules_by_activation(model, Xs, num_mfs, features, top_k=10)
     flood_event_rule_analysis(model, Xs, wl_true,
                               num_mfs, features,
                               threshold_percentile=90,
@@ -211,8 +213,9 @@ def evaluate():
         "WL_error": wl_true - wl_pred
     })
 
-    out.to_csv("anfis_predictions.csv", index=False)
-    print("\nSaved to anfis_predictions.csv")
+    # Output file adjusted for 3D predictions
+    out.to_csv("anfis_predictions_3d.csv", index=False)
+    print("\nSaved to anfis_predictions_3d.csv")
     print(out.head())
 
 
@@ -317,8 +320,9 @@ def save_rules_to_csv(model, feature_names, num_mfs):
         row["rule_output_constant"] = coeffs[r, 0]
         rows.append(row)
 
-    pd.DataFrame(rows).to_csv("anfis_rule_base.csv", index=False)
-    print("\nFull rule base saved to anfis_rule_base.csv")
+    # Output file adjusted for 3D rules
+    pd.DataFrame(rows).to_csv("anfis_rule_base_3d.csv", index=False)
+    print("\nFull rule base saved to anfis_rule_base_3d.csv")
 
 
 def rank_least_activated_rules(model, X_scaled, num_mfs, feature_names, bottom_k=10):
