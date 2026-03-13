@@ -344,4 +344,4 @@ scheduler.start()
 
 if __name__ == "__main__":
     run_prediction_job(MINIJA_CONFIG)
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False)
