@@ -152,46 +152,109 @@
             1-Day Forecast: ${level} cm
         `);
 }
-        function renderChart(history) {
-            const ctx = document.getElementById('forecast-chart').getContext('2d');
-            if(chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: history.map(d => d.date),
-                    datasets: [
-{
-    label: 'Actual',
-    data: history.map(d => d.actual),
-    borderColor: '#3b82f6',
-    tension: 0.3
-},
-{
-    label: '1D Forecast',
-    data: history.map(d => d.pred1d),
-    borderColor: '#a855f7',
-    borderDash:[5,5],
-    tension: 0.3
-},
-{
-    label: '3D Forecast',
-    data: history.map(d => d.pred3d),
-    borderColor: '#f59e0b',
-    borderDash:[6,4],
-    tension: 0.3
-},
-{
-    label: '5D Forecast',
-    data: history.map(d => d.pred5d),
-    borderColor: '#ef4444',
-    borderDash:[3,3],
-    tension: 0.3
-}
-]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
-            });
+      function renderChart(history) {
+    const ctx = document.getElementById('forecast-chart').getContext('2d');
+    if(chart) chart.destroy();
+
+    // Consolidate duplicate dates by merging their values
+    const dateMap = {};
+    history.forEach(item => {
+        const date = item.date;
+        if (!dateMap[date]) {
+            dateMap[date] = {
+                date: date,
+                actual: item.actual,
+                pred1d: item.pred1d,
+                pred3d: item.pred3d,
+                pred5d: item.pred5d
+            };
+        } else {
+            // Merge values - prefer non-null/non-undefined values
+            dateMap[date].actual = dateMap[date].actual ?? item.actual;
+            dateMap[date].pred1d = dateMap[date].pred1d ?? item.pred1d;
+            dateMap[date].pred3d = dateMap[date].pred3d ?? item.pred3d;
+            dateMap[date].pred5d = dateMap[date].pred5d ?? item.pred5d;
         }
+    });
+
+    // Convert back to array and sort chronologically
+    const consolidatedData = Object.values(dateMap).sort((a, b) =>
+        new Date(a.date) - new Date(b.date)
+    );
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: consolidatedData.map(d => d.date),
+            datasets: [
+                {
+                    label: 'Actual',
+                    data: consolidatedData.map(d => d.actual),
+                    borderColor: '#3b82f6',
+                    backgroundColor: '#3b82f6',
+                    tension: 0.3,
+                    spanGaps: true
+                },
+                {
+                    label: '1D Forecast',
+                    data: consolidatedData.map(d => d.pred1d),
+                    borderColor: '#a855f7',
+                    backgroundColor: '#a855f7',
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    spanGaps: true
+                },
+                {
+                    label: '3D Forecast',
+                    data: consolidatedData.map(d => d.pred3d),
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b',
+                    borderDash: [6, 4],
+                    tension: 0.3,
+                    spanGaps: true
+                },
+                {
+                    label: '5D Forecast',
+                    data: consolidatedData.map(d => d.pred5d),
+                    borderColor: '#ef4444',
+                    backgroundColor: '#ef4444',
+                    borderDash: [3, 3],
+                    tension: 0.3,
+                    spanGaps: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#94a3b8',
+                        usePointStyle: true
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' },
+                    title: {
+                        display: true,
+                        text: 'Water Level (cm)',
+                        color: '#94a3b8'
+                    }
+                }
+            }
+        }
+    });
+}
+
+
 
         window.onload = () => {
     initMap();
