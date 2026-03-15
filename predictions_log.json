@@ -29,9 +29,9 @@
         }
     },
     "2026-03-13": {
-        "actual": 424.0,
+        "actual": 425.9,
         "features": {
-            "Water Level": "424 cm",
+            "Water Level": "425.9 cm",
             "Precipitation (Pt)": "0.0 mm",
             "Soil Saturation (API)": "0.38 idx",
             "Snowmelt (SMI)": "5.12 mm",
@@ -41,18 +41,47 @@
         "fired_rule": "Rule #1308 (Act: 0.25): IF API_norm is Extreme AND S_t is Late Winter AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme",
         "horizons": {
             "1d": {
-                "level": 423.19,
+                "level": 425.09,
                 "change": -0.81,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": 259.99,
+                "level": 261.89,
                 "change": -164.01,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": 177.47,
+                "level": 179.37,
                 "change": -246.53,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-03-14": {
+        "actual": 480.5,
+        "features": {
+            "Water Level": "480.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.33 idx",
+            "Snowmelt (SMI)": "26.71 mm",
+            "Seasonality": "0.309",
+            "Trend": "64.4 cm"
+        },
+        "fired_rule": "Rule #2583 (Act: 0.60): IF API_norm is Very High AND S_t is Late Winter AND SMI_t is Low AND Pt is Medium AND delta_WL_t is Extreme",
+        "horizons": {
+            "1d": {
+                "level": 502.97,
+                "change": 22.47,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 423.3,
+                "change": -57.2,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 317.32,
+                "change": -163.18,
                 "label": "5-Day Forecast"
             }
         }

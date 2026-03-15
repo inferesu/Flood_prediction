@@ -16,6 +16,8 @@
         .risk-moderate { border-top: 4px solid #f59e0b; }
         .risk-high { border-top: 4px solid #ef4444; }
         .risk-severe { border-top: 4px solid #a855f7; }
+        .leaflet-popup-content-wrapper { background-color: #1e293b; color: #e2e8f0; }
+        .leaflet-popup-tip { background-color: #1e293b; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -72,7 +74,12 @@
 
     <script>
         let map;
-       let marker;
+        let marker;
+        let floodZoneLayers = { low: null, moderate: null, high: null, severe: null };
+        let infrastructureLayer = L.layerGroup();
+        let stationsLayer = L.layerGroup();
+        let layerControl;
+
         async function updateDashboard() {
             try {
                 const res = await fetch('/api/data?river=minija');
@@ -112,154 +119,319 @@
         }
 
         let chart;
-        function initMap(){
 
+        function initMap(){
             map = L.map('map').setView([55.3, 23.9], 7);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
-        }
-        function updateMap(data){
 
-    const lat = data.lat;
-    const lon = data.lon;
+            // Add infrastructure and stations layers to map
+            infrastructureLayer.addTo(map);
+            stationsLayer.addTo(map);
 
-    const level = data.horizons["1d"].level;
-
-    let color = "green";
-
-    if(level > 550) color = "purple";
-    else if(level > 400) color = "red";
-    else if(level > 250) color = "yellow";
-
-    const markerStyle = {
-        radius: 10,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.8
-    };
-
-    if(marker){
-        map.removeLayer(marker);
-    }
-
-    marker = L.circleMarker([lat, lon], markerStyle)
-        .addTo(map)
-        .bindPopup(`
-            <b>${data.riverName}</b><br>
-            Current: ${data.lastKnownLevel} cm<br>
-            1-Day Forecast: ${level} cm
-        `);
-}
-      function renderChart(history) {
-    const ctx = document.getElementById('forecast-chart').getContext('2d');
-    if(chart) chart.destroy();
-
-    // Consolidate duplicate dates by merging their values
-    const dateMap = {};
-    history.forEach(item => {
-        const date = item.date;
-        if (!dateMap[date]) {
-            dateMap[date] = {
-                date: date,
-                actual: item.actual,
-                pred1d: item.pred1d,
-                pred3d: item.pred3d,
-                pred5d: item.pred5d
+            // Layer control
+            const overlayMaps = {
+                "🏥 Critical Infrastructure": infrastructureLayer,
+                "📍 Monitoring Stations": stationsLayer,
+                "🌊 Flood Risk Zones": L.layerGroup() // Placeholder, will be updated dynamically
             };
-        } else {
-            // Merge values - prefer non-null/non-undefined values
-            dateMap[date].actual = dateMap[date].actual ?? item.actual;
-            dateMap[date].pred1d = dateMap[date].pred1d ?? item.pred1d;
-            dateMap[date].pred3d = dateMap[date].pred3d ?? item.pred3d;
-            dateMap[date].pred5d = dateMap[date].pred5d ?? item.pred5d;
+
+            layerControl = L.control.layers(null, overlayMaps, { position: 'topright' }).addTo(map);
         }
-    });
 
-    // Convert back to array and sort chronologically
-    const consolidatedData = Object.values(dateMap).sort((a, b) =>
-        new Date(a.date) - new Date(b.date)
-    );
+        function updateMap(data){
+            const lat = data.lat;
+            const lon = data.lon;
+            const level = data.horizons["1d"].level;
 
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: consolidatedData.map(d => d.date),
-            datasets: [
-                {
-                    label: 'Actual',
-                    data: consolidatedData.map(d => d.actual),
-                    borderColor: '#3b82f6',
-                    backgroundColor: '#3b82f6',
-                    tension: 0.3,
-                    spanGaps: true
-                },
-                {
-                    label: '1D Forecast',
-                    data: consolidatedData.map(d => d.pred1d),
-                    borderColor: '#a855f7',
-                    backgroundColor: '#a855f7',
-                    borderDash: [5, 5],
-                    tension: 0.3,
-                    spanGaps: true
-                },
-                {
-                    label: '3D Forecast',
-                    data: consolidatedData.map(d => d.pred3d),
-                    borderColor: '#f59e0b',
-                    backgroundColor: '#f59e0b',
-                    borderDash: [6, 4],
-                    tension: 0.3,
-                    spanGaps: true
-                },
-                {
-                    label: '5D Forecast',
-                    data: consolidatedData.map(d => d.pred5d),
-                    borderColor: '#ef4444',
-                    backgroundColor: '#ef4444',
-                    borderDash: [3, 3],
-                    tension: 0.3,
-                    spanGaps: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#94a3b8',
-                        usePointStyle: true
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: '#334155' }
-                },
-                y: {
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: '#334155' },
-                    title: {
-                        display: true,
-                        text: 'Water Level (cm)',
-                        color: '#94a3b8'
-                    }
-                }
+            // Update main marker
+            let color = getRiskColor(level);
+
+            const markerStyle = {
+                radius: 12,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.8,
+                weight: 3
+            };
+
+            if(marker){
+                map.removeLayer(marker);
+            }
+
+            marker = L.circleMarker([lat, lon], markerStyle)
+                .addTo(map)
+                .bindPopup(`
+                    <div style="font-family: Lato; color: #e2e8f0;">
+                        <b style="font-size: 16px;">${data.riverName}</b><br>
+                        <hr style="border-color: #334155; margin: 8px 0;">
+                        <span style="color: #94a3b8;">Current Level:</span> <b>${data.lastKnownLevel} cm</b><br>
+                        <span style="color: #94a3b8;">1-Day Forecast:</span> <b style="color: ${color};">${level} cm</b><br>
+                        <span style="color: #94a3b8;">Risk Level:</span> <b>${getRiskLabel(level)}</b>
+                    </div>
+                `);
+
+            // ✨ FEATURE 1: FLOOD INUNDATION ZONES
+            updateFloodZones(lat, lon, level);
+
+            // ✨ FEATURE 2: MULTIPLE MONITORING STATIONS
+            if(data.stations) {
+                updateStations(data.stations);
+            }
+
+            // ✨ FEATURE 3: CRITICAL INFRASTRUCTURE
+            if(data.infrastructure) {
+                updateInfrastructure(data.infrastructure, level);
+            }
+
+            map.setView([lat, lon], 9);
+        }
+
+        // ✨ FEATURE 1: Predicted Flood Inundation Zones
+        function updateFloodZones(lat, lon, forecastLevel) {
+            // Clear existing zones
+            Object.values(floodZoneLayers).forEach(layer => {
+                if(layer) map.removeLayer(layer);
+            });
+
+            // Define risk radii based on forecast level (in meters)
+            const zones = {
+                low: { radius: 2000, color: '#10b981', fillOpacity: 0.15 },
+                moderate: { radius: 5000, color: '#f59e0b', fillOpacity: 0.2 },
+                high: { radius: 8000, color: '#ef4444', fillOpacity: 0.25 },
+                severe: { radius: 12000, color: '#a855f7', fillOpacity: 0.3 }
+            };
+
+            // Show zones based on current forecast
+            if(forecastLevel > 250) {
+                floodZoneLayers.low = L.circle([lat, lon], {
+                    ...zones.low,
+                    radius: zones.low.radius
+                }).addTo(map).bindPopup('<b>Low Risk Zone</b><br>Water level: 250-400 cm');
+            }
+
+            if(forecastLevel > 400) {
+                floodZoneLayers.moderate = L.circle([lat, lon], {
+                    ...zones.moderate,
+                    radius: zones.moderate.radius
+                }).addTo(map).bindPopup('<b>Moderate Risk Zone</b><br>Water level: 400-550 cm');
+            }
+
+            if(forecastLevel > 550) {
+                floodZoneLayers.high = L.circle([lat, lon], {
+                    ...zones.high,
+                    radius: zones.high.radius
+                }).addTo(map).bindPopup('<b>High Risk Zone</b><br>Water level: 550+ cm');
+
+                floodZoneLayers.severe = L.circle([lat, lon], {
+                    ...zones.severe,
+                    radius: zones.severe.radius
+                }).addTo(map).bindPopup('<b>Severe Risk Zone</b><br>Immediate evacuation recommended');
             }
         }
-    });
-}
 
+        // ✨ FEATURE 2: Multiple Monitoring Stations
+        function updateStations(stations) {
+            stationsLayer.clearLayers();
 
+            stations.forEach(station => {
+                const color = getRiskColor(station.forecast);
+
+                L.circleMarker([station.lat, station.lon], {
+                    radius: 8,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.7,
+                    weight: 2
+                })
+                .bindPopup(`
+                    <div style="font-family: Lato; color: #e2e8f0;">
+                        <b>${station.name}</b><br>
+                        <span style="color: #94a3b8;">Current:</span> ${station.current} cm<br>
+                        <span style="color: #94a3b8;">Forecast:</span> <b style="color: ${color};">${station.forecast} cm</b>
+                    </div>
+                `)
+                .addTo(stationsLayer);
+            });
+        }
+
+        // ✨ FEATURE 3: Critical Infrastructure
+        function updateInfrastructure(infrastructure, forecastLevel) {
+            infrastructureLayer.clearLayers();
+
+            const icons = {
+                hospital: '🏥',
+                shelter: '🏠',
+                bridge: '🌉',
+                dam: '🚧',
+                school: '🏫',
+                power: '⚡'
+            };
+
+            infrastructure.forEach(item => {
+                const inDangerZone = isInDangerZone(item.lat, item.lon, forecastLevel);
+
+                const divIcon = L.divIcon({
+                    html: `<div style="font-size: 24px; ${inDangerZone ? 'filter: drop-shadow(0 0 8px red);' : ''}">${icons[item.type] || '📍'}</div>`,
+                    className: '',
+                    iconSize: [30, 30]
+                });
+
+                L.marker([item.lat, item.lon], { icon: divIcon })
+                    .bindPopup(`
+                        <div style="font-family: Lato; color: #e2e8f0;">
+                            <b>${item.name}</b><br>
+                            <span style="color: #94a3b8;">Type:</span> ${item.type}<br>
+                            ${inDangerZone ? '<span style="color: #ef4444; font-weight: bold;">⚠️ IN FLOOD ZONE</span>' : '<span style="color: #10b981;">✓ Safe</span>'}
+                        </div>
+                    `)
+                    .addTo(infrastructureLayer);
+            });
+        }
+
+        // Helper Functions
+        function getRiskColor(level) {
+            if(level > 550) return '#a855f7'; // purple
+            if(level > 400) return '#ef4444'; // red
+            if(level > 250) return '#f59e0b'; // orange
+            return '#10b981'; // green
+        }
+
+        function getRiskLabel(level) {
+            if(level > 550) return '🚨 SEVERE';
+            if(level > 400) return '⚠️ HIGH';
+            if(level > 250) return '⚡ MODERATE';
+            return '✓ LOW';
+        }
+
+        function isInDangerZone(lat, lon, forecastLevel) {
+            // Simple distance check - you can make this more sophisticated
+            const mainLat = 55.3;
+            const mainLon = 23.9;
+            const distance = getDistance(lat, lon, mainLat, mainLon);
+
+            if(forecastLevel > 550) return distance < 12; // 12km
+            if(forecastLevel > 400) return distance < 8;  // 8km
+            if(forecastLevel > 250) return distance < 5;  // 5km
+            return false;
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function renderChart(history) {
+            const ctx = document.getElementById('forecast-chart').getContext('2d');
+            if(chart) chart.destroy();
+
+            const dateMap = {};
+            history.forEach(item => {
+                const date = item.date;
+                if (!dateMap[date]) {
+                    dateMap[date] = {
+                        date: date,
+                        actual: item.actual,
+                        pred1d: item.pred1d,
+                        pred3d: item.pred3d,
+                        pred5d: item.pred5d
+                    };
+                } else {
+                    dateMap[date].actual = dateMap[date].actual ?? item.actual;
+                    dateMap[date].pred1d = dateMap[date].pred1d ?? item.pred1d;
+                    dateMap[date].pred3d = dateMap[date].pred3d ?? item.pred3d;
+                    dateMap[date].pred5d = dateMap[date].pred5d ?? item.pred5d;
+                }
+            });
+
+            const consolidatedData = Object.values(dateMap).sort((a, b) =>
+                new Date(a.date) - new Date(b.date)
+            );
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: consolidatedData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Actual',
+                            data: consolidatedData.map(d => d.actual),
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#3b82f6',
+                            tension: 0.3,
+                            spanGaps: true
+                        },
+                        {
+                            label: '1D Forecast',
+                            data: consolidatedData.map(d => d.pred1d),
+                            borderColor: '#a855f7',
+                            backgroundColor: '#a855f7',
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            spanGaps: true
+                        },
+                        {
+                            label: '3D Forecast',
+                            data: consolidatedData.map(d => d.pred3d),
+                            borderColor: '#f59e0b',
+                            backgroundColor: '#f59e0b',
+                            borderDash: [6, 4],
+                            tension: 0.3,
+                            spanGaps: true
+                        },
+                        {
+                            label: '5D Forecast',
+                            data: consolidatedData.map(d => d.pred5d),
+                            borderColor: '#ef4444',
+                            backgroundColor: '#ef4444',
+                            borderDash: [3, 3],
+                            tension: 0.3,
+                            spanGaps: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#94a3b8',
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' },
+                            title: {
+                                display: true,
+                                text: 'Water Level (cm)',
+                                color: '#94a3b8'
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         window.onload = () => {
-    initMap();
-    updateDashboard();
-};
+            initMap();
+            updateDashboard();
+        };
         setInterval(updateDashboard, 300000);
     </script>
 </body>
