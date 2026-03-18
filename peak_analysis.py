@@ -74,18 +74,29 @@ results_df = pd.DataFrame(results).set_index('Model')
 print(results_df)
 
 # ================= VISUALIZATION =================
-# 1. Bar Chart of Errors during Floods
-plt.figure(figsize=(10, 6))
-bars = plt.bar(results_df.index, results_df['MAE (cm)'], color=['blue', 'orange', 'green'], alpha=0.8)
+# 1. Bar Chart of Errors during Floods - Excel-style narrow bars close together
+plt.figure(figsize=(7, 6))
+
+# Define explicit positions for bars to control spacing
+x_positions = [0, 0.6, 1.2]  # Closer spacing between bars
+bar_width = 0.2  # Excel-style narrow width
+
+bars = plt.bar(x_positions, results_df['MAE (cm)'],
+               width=bar_width,
+               color=['blue', 'orange', 'green'],
+               alpha=0.8)
+
+plt.xticks(x_positions, results_df.index)  # Set labels at the bar positions
 plt.title(f"Mean Absolute Error During Floods (Top {int((1 - PERCENTILE_THRESHOLD) * 100)}% Water Levels)", fontsize=14)
 plt.ylabel("Error in centimeters (Lower is better)", fontsize=12)
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 
 # Add exact numbers on top of the bars
-for bar in bars:
+for bar, x_pos in zip(bars, x_positions):
     yval = bar.get_height()
-    plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.2, f"{yval} cm", ha='center', va='bottom', fontweight='bold')
+    plt.text(x_pos, yval + 0.2, f"{yval} cm", ha='center', va='bottom', fontweight='bold')
 
+plt.xlim(-0.3, 1.5)  # Tighter x-axis limits to reduce empty space
 plt.show()
 
 # 2. Time Series Snippet of the Highest Peak
