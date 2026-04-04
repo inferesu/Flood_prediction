@@ -4,5 +4,34 @@
     },
     "2025-11-18": {
         "predicted": 182.02043605804442
+    },
+    "2026-04-04": {
+        "actual": 199.8,
+        "features": {
+            "Water Level": "199.8 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "8.46 mm",
+            "Seasonality": "-0.047",
+            "Trend": "0.0 cm"
+        },
+        "fired_rule": "Rule #56 (Act: 0.37): IF API_norm is Low AND S_t is Late Winter AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High",
+        "horizons": {
+            "1d": {
+                "level": 200.17,
+                "change": 0.37,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 196.4,
+                "change": -3.4,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 206.25,
+                "change": 6.45,
+                "label": "5-Day Forecast"
+            }
+        }
     }
 }

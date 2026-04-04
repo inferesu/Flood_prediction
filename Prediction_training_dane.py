@@ -1,200 +1,252 @@
 import json
 import random
+
+import joblib
 import numpy as np
 import pandas as pd
 import torch
-import joblib
 from sklearn.preprocessing import MinMaxScaler
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
-# Ensure these imports exist at runtime
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
-# --- Configuration & Reproducibility ---
-SEED = 42
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+SEED       = 42
+NUM_MFS    = 5
+NUM_EPOCHS = 300
+K_DECAY    = 0.85
+LR         = 1e-4          # reduced from 1e-3 — safer for ANFIS
+
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
-# --- File Paths (Updated with "dane") ---
-TRAIN_DATA_FILE = 'dane-klaipeda_precip_data_2015-2024.csv'
-MODEL_SAVE_PATH = "anfis_model_dane.pth"
-SCALER_X_PATH = "scaler_X_dane.pkl"
-SCALER_Y_PATH = "scaler_Y_dane.pkl"
-CONFIG_JSON_PATH = "training_config_dane.json"
+TRAIN_DATA_FILE = 'danija_complex_data_2024.csv'
+FEATURES_LIST   = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
+TARGET          = 'target_change'
 
-# --- Hyperparameters (matching original script) ---
-BATCH_SIZE = 16
-EPOCHS = 200
-LR = 1e-3  # Keeping LR the same for now, as clipping is the primary fix
-MOMENTUM = 0.9
-NUM_MFS = 3
-CLIP_GRAD_NORM = 1.0  # NEW: Gradient clipping maximum norm
-
-# --- Feature Engineering (Updated for "dane" - Klaipedos only) ---
-FEATURES_LIST = [
-    'precip_klaipedos_lag_12h', 'precip_klaipedos_lag_24h',
-    'precip_klaipedos_lag_48h', 'precip_klaipedos_lag_72h'
-]
-TARGET = 'target_change'
+MODEL_FILE    = 'dane_anfis_model.pth'
+SCALER_X_FILE = 'dane_scaler_X.pkl'
+SCALER_Y_FILE = 'dane_scaler_y.pkl'
+CONFIG_FILE   = 'dane_training_config.json'
 
 
-def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.sort_index(inplace=True)
-    df.interpolate(method='time', inplace=True)
+# ---------------------------------------------------------------------------
+# Feature engineering
+# ---------------------------------------------------------------------------
+def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy().sort_index()
 
-    # Feature engineering for Klaipeda
-    df['precip_klaipedos_lag_12h'] = df['precip_klaipedos-ams_mm'].rolling(12, min_periods=1).sum()
-    df['precip_klaipedos_lag_24h'] = df['precip_klaipedos-ams_mm'].rolling(24, min_periods=1).sum()
-    df['precip_klaipedos_lag_48h'] = df['precip_klaipedos-ams_mm'].rolling(48, min_periods=1).sum()
-    df['precip_klaipedos_lag_72h'] = df['precip_klaipedos-ams_mm'].rolling(72, min_periods=1).sum()
+    df['Pt'] = df['precip_klaipedos-ams']
 
+    api_vals, curr_api = [], 0
+    for p in df['Pt']:
+        curr_api = p + (K_DECAY * curr_api)
+        api_vals.append(curr_api)
+    df['API_t'] = api_vals
+
+    api_min, api_max = df['API_t'].min(), df['API_t'].max()
+    df['API_norm'] = (
+        (df['API_t'] - api_min) / (api_max - api_min)
+        if api_max != api_min else 0.0
+    )
+
+    d = pd.to_datetime(df['timestamp']).dt.dayofyear
+    df['S_t'] = np.cos((2 * np.pi * d) / 365)
+
+    df['SMI_t'] = df['temp_klaipedos-ams'].apply(
+        lambda x: max(0, x * 2.5) if x > 0 else 0
+    )
+
+    df['delta_WL_t']    = df['water_level_cm'].diff().fillna(0)
     df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
-    df.dropna(inplace=True)
-    return df
+
+    return df.dropna()
 
 
+# ---------------------------------------------------------------------------
+# Model factory  — stable initialisation
+# ---------------------------------------------------------------------------
 def build_anfis(num_inputs: int, num_mfs: int) -> AnfisNet:
     """
-    Creates an ANFIS model with random initialization, matching the original script.
+    Initialise Bell MFs with safe, spread-out centres and a width of 1.0.
+    centres evenly spaced in [0.1, 0.9] so no two MFs start on top of each other.
+    a=1.0  → width safe, never near zero
+    b=2.0  → standard bell slope
+    c      → evenly spaced centres across [0.1, 0.9]
     """
+    centres = torch.linspace(0.1, 0.9, num_mfs)
     invardefs = []
     for i in range(num_inputs):
-        # Using random initialization as per the first script
-        mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]
+        mfs = [
+            BellMembFunc(
+                torch.tensor([1.0]),          # a — width, never near 0
+                torch.tensor([2.0]),          # b — slope
+                centres[j].unsqueeze(0),      # c — evenly spaced centre
+            )
+            for j in range(num_mfs)
+        ]
         invardefs.append((f'x{i}', mfs))
+    return AnfisNet('Dane Flood Model', invardefs, ['y'], hybrid=True)
 
-    return AnfisNet('Flood Prediction Model (Dane)', invardefs, ['y'], hybrid=True)
+
+# ---------------------------------------------------------------------------
+# NaN guard
+# ---------------------------------------------------------------------------
+def has_nan_params(model: torch.nn.Module) -> bool:
+    return any(torch.isnan(p).any().item() for p in model.parameters())
 
 
-def train_and_save_model():
-    """Main function to run the training and save artifacts."""
-    print("--- Step 1: Load and Prepare Training Data ---")
-    df_train = pd.read_csv(TRAIN_DATA_FILE, parse_dates=['timestamp'], index_col='timestamp')
-    df_train = prepare_features(df_train)
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+def train_and_save():
+    print("=" * 60)
+    print("   🌊 DANE ANFIS TRAINING PIPELINE")
+    print(f"   Input  : {TRAIN_DATA_FILE}")
+    print(f"   Model  : {MODEL_FILE}")
+    print(f"   LR     : {LR}")
+    print("=" * 60)
 
-    X_train = df_train[FEATURES_LIST].values
-    y_train = df_train[TARGET].values
+    # ── Step 1: Load & prepare ───────────────────────────────────────────
+    print("\n━━━ STEP 1: Loading & Preparing Features ━━━━━━━━━━━━━━━━")
+    df = prepare_complex_features(pd.read_csv(TRAIN_DATA_FILE))
+    print(f"   ✔️  Dataset loaded — {len(df)} rows after dropna")
 
-    print("\n--- Step 2: Scale Data and Save Scalers ---")
+    X = df[FEATURES_LIST].values
+    y = df[TARGET].values.reshape(-1, 1)
+    print(f"   ✔️  X shape: {X.shape}  |  y shape: {y.shape}")
+    print(f"   ✔️  X range: [{X.min():.3f}, {X.max():.3f}]")
+    print(f"   ✔️  y range: [{y.min():.3f}, {y.max():.3f}]")
+
+    # ── Step 2: Scale ────────────────────────────────────────────────────
+    print("\n━━━ STEP 2: Scaling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     scaler_X = MinMaxScaler()
     scaler_y = MinMaxScaler()
-    X_train_scaled = scaler_X.fit_transform(X_train)
-    y_train_scaled = scaler_y.fit_transform(y_train.reshape(-1, 1))
+    X_scaled = scaler_X.fit_transform(X)
+    y_scaled = scaler_y.fit_transform(y)
 
-    # NEW: Check for NaNs in scaled data
-    if np.isnan(X_train_scaled).any() or np.isnan(y_train_scaled).any():
-        print("❌ Error: NaNs found in scaled training data. Aborting.")
-        return
+    joblib.dump(scaler_X, SCALER_X_FILE)
+    joblib.dump(scaler_y, SCALER_Y_FILE)
+    print(f"   ✔️  Scalers saved → {SCALER_X_FILE}, {SCALER_Y_FILE}")
 
-    joblib.dump(scaler_X, SCALER_X_PATH)
-    joblib.dump(scaler_y, SCALER_Y_PATH)
-    print(f"Scalers saved to {SCALER_X_PATH} and {SCALER_Y_PATH}")
+    # ── Step 3: Build ────────────────────────────────────────────────────
+    print("\n━━━ STEP 3: Building ANFIS Model ━━━━━━━━━━━━━━━━━━━━━━━━")
+    model = build_anfis(len(FEATURES_LIST), NUM_MFS)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"   ✔️  ANFIS built — inputs={len(FEATURES_LIST)}, MFs={NUM_MFS}, params={total_params}")
 
-    x_train_tensor = torch.from_numpy(X_train_scaled).float()
-    y_train_tensor = torch.from_numpy(y_train_scaled).float()
-    train_dl = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=BATCH_SIZE, shuffle=True)
+    # Verify initialisation is clean before touching a single gradient
+    assert not has_nan_params(model), "NaN in model parameters at init — check BellMembFunc"
+    print("   ✔️  Parameter init verified — no NaN")
 
-    print("\n--- Step 3: Define and Build ANFIS Model ---")
-    num_inputs = len(FEATURES_LIST)
-    print(f"Building model with {num_inputs} inputs (from Klaipedos station only).")
-    model = build_anfis(num_inputs, NUM_MFS)
-    optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
+    # Adam is more numerically stable than SGD for ANFIS
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = torch.nn.MSELoss()
 
-    # Keep track of the last good model state
-    last_good_model_state = model.state_dict()
-    last_good_coeffs = model.coeff
+    x_t = torch.tensor(X_scaled).float()
+    y_t = torch.tensor(y_scaled).float()
+    loader = DataLoader(TensorDataset(x_t, y_t), batch_size=32, shuffle=True)
 
-    print("\n--- Step 4: Training Loop ---")
-    nan_detected = False
-    for epoch in range(EPOCHS):
-        if nan_detected:
+    # ── Step 4: Train ────────────────────────────────────────────────────
+    print(f"\n━━━ STEP 4: Training ({NUM_EPOCHS} epochs) ━━━━━━━━━━━━━━━━━━━━")
+    best_loss  = float('inf')
+    best_state = None
+
+    for epoch in range(NUM_EPOCHS):
+
+        # Stop immediately if parameters have gone NaN
+        if has_nan_params(model):
+            print(f"\n   ⚠️  NaN detected in parameters at epoch {epoch} — stopping early.")
+            print("   Restoring best known-good state.")
+            if best_state is not None:
+                model.load_state_dict(best_state)
             break
 
-        epoch_loss_total = 0.0
-        num_batches = 0
-
-        for x_batch, y_batch in train_dl:
-            model.train()
+        epoch_loss = 0.0
+        for xb, yb in loader:
             optimizer.zero_grad()
-            y_pred_scaled = model(x_batch)
+            out  = model(xb)
+            loss = criterion(out, yb)
 
-            # Check for NaNs in prediction
-            if torch.isnan(y_pred_scaled).any():
-                print(f"❌ NaN detected in model output during Epoch {epoch + 1}. Stopping gradient step.")
-                nan_detected = True
-                break
-
-            loss = criterion(y_pred_scaled, y_batch)
-
-            # Check for NaNs in loss
             if torch.isnan(loss):
-                print(f"❌ NaN detected in loss during Epoch {epoch + 1}. Stopping gradient step.")
-                nan_detected = True
-                break
+                print(f"   ⚠️  NaN loss at epoch {epoch} — skipping batch.")
+                continue
 
             loss.backward()
 
-            # --- NEW: GRADIENT CLIPPING ---
-            # Clip gradients to prevent them from exploding
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=CLIP_GRAD_NORM)
+            # Clip gradients — prevents explosions typical in ANFIS
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
             optimizer.step()
+            epoch_loss += loss.item()
 
-            epoch_loss_total += loss.item()
-            num_batches += 1
-
-        if nan_detected:
-            print("NaN detected, stopping training.")
-            break
-
-        # --- MODIFIED: More stable hybrid learning step ---
         with torch.no_grad():
-            model.fit_coeff(x_train_tensor, y_train_tensor)
+            model.fit_coeff(x_t, y_t)
 
-            # --- NEW: Check for NaN after fit_coeff ---
-            if torch.isnan(model.coeff).any():
-                print(f"❌ NaN detected in model.coeff after fit_coeff in Epoch {epoch + 1}. Stopping training.")
-                nan_detected = True
-                break  # Exit the epoch loop
-            else:
-                # Update the last good state
-                last_good_model_state = model.state_dict()
-                last_good_coeffs = model.coeff
+        avg_loss = epoch_loss / max(len(loader), 1)
 
-        if (epoch + 1) % 10 == 0:
-            with torch.no_grad():
-                y_pred_final = model(x_train_tensor)
-                epoch_loss = criterion(y_pred_final, y_train_tensor)
-                print(f'Epoch {epoch + 1}/{EPOCHS}, Loss: {epoch_loss.item():.4f}')
+        if avg_loss < best_loss and not has_nan_params(model):
+            best_loss  = avg_loss
+            # Deep-copy the state so we can restore if training later diverges
+            best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
-    print("\n--- Step 5: Save Model and Configuration ---")
-    if nan_detected:
-        print("⚠️ WARNING: Training stopped due to NaN. Saving the *last good model state* before the error.")
-    else:
-        print("✅ Training completed successfully.")
+        if (epoch + 1) % 20 == 0:
+            nan_flag = " ⚠️ NaN params!" if has_nan_params(model) else ""
+            print(f"   📉 Epoch [{epoch + 1:3d}/{NUM_EPOCHS}]  "
+                  f"Loss: {avg_loss:.6f}  |  Best: {best_loss:.6f}{nan_flag}")
 
-    # Save the last good state
-    # Save the last good state
+    # Restore best state before saving
+    if best_state is not None:
+        model.load_state_dict(best_state)
+        print(f"\n   ✔️  Best model state restored (loss={best_loss:.6f})")
+
+    # Final NaN check
+    if has_nan_params(model):
+        print("\n   ❌ Model still contains NaN after training. Do NOT save — fix the data first.")
+        return
+
+    # ── Step 5: Save ─────────────────────────────────────────────────────
+    print(f"\n━━━ STEP 5: Saving Model & Config ━━━━━━━━━━━━━━━━━━━━━━")
+
+    coeff = model.coeff
+    if isinstance(coeff, np.ndarray):
+        coeff = torch.tensor(coeff, dtype=torch.float32)
+
+    if coeff is not None and torch.isnan(coeff).any():
+        print("   ⚠️  coeff contains NaN — running fit_coeff one final time.")
+        with torch.no_grad():
+            model.fit_coeff(x_t, y_t)
+        coeff = model.coeff
+        if isinstance(coeff, np.ndarray):
+            coeff = torch.tensor(coeff, dtype=torch.float32)
+
     torch.save({
-        'model_state_dict': last_good_model_state,
-        'consequent_coeffs': last_good_coeffs,
-    }, MODEL_SAVE_PATH)
-    print(f"Model and coefficients saved to {MODEL_SAVE_PATH}")
+        'model_state_dict': model.state_dict(),
+        'coeff':            coeff,
+        'features':         FEATURES_LIST,
+        'num_mfs':          NUM_MFS,
+        'k_decay':          K_DECAY,
+    }, MODEL_FILE)
+    print(f"   ✔️  Model saved → {MODEL_FILE}")
 
-    config = {
-        "features_list": FEATURES_LIST,
-        "num_inputs": len(FEATURES_LIST),
-        "num_mfs": NUM_MFS,
-        "target": TARGET
-    }
-    with open(CONFIG_JSON_PATH, "w") as f:
-        json.dump(config, f, indent=4)
-    print(f"Training config saved to {CONFIG_JSON_PATH}")
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump({
+            'num_mfs':    NUM_MFS,
+            'features':   FEATURES_LIST,
+            'k_decay':    K_DECAY,
+            'num_epochs': NUM_EPOCHS,
+        }, f, indent=4)
+    print(f"   ✔️  Training config saved → {CONFIG_FILE}")
+
+    print("\n" + "=" * 60)
+    print(f"   ✅ Training complete!")
+    print(f"   📉 Final best loss : {best_loss:.6f}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
-    train_and_save_model()
+    train_and_save()
