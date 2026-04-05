@@ -1,0 +1,21 @@
+{
+    "2026-04-05": {
+        "actual": 126.4,
+        "features": {
+            "Water Level": "126.4 cm",
+            "Precipitation (Pt)": "0.15 mm",
+            "Soil Saturation (API)": "0.15 idx",
+            "Snowmelt (SMI)": "10.6 mm",
+            "Seasonality": "-0.065",
+            "Trend": "0.0 cm"
+        },
+        "fired_rule": "Rule #276 (Act: 0.99): IF API_norm is Low AND S_t is Late Jan AND SMI_t is Very High AND Pt is High AND delta_WL_t is High",
+        "horizons": {
+            "1d": {
+                "level": 128.31,
+                "change": 1.91,
+                "label": "1-Day Forecast"
+            }
+        }
+    }
+}
