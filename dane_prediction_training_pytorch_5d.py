@@ -31,22 +31,22 @@ K_DECAY = 0.85
 # ---------------------------------------------------------------------------
 INFRASTRUCTURE_DATA = {
     "minija": [
-        {"name": "Klaipėda University Hospital", "type": "hospital",  "lat": 55.7067, "lon": 21.1443},
-        {"name": "Priekulė Emergency Shelter",   "type": "shelter",   "lat": 55.5446, "lon": 21.3295},
-        {"name": "Kintai Bridge",                "type": "bridge",    "lat": 55.3500, "lon": 21.2500},
-        {"name": "Minija Dam",                   "type": "dam",       "lat": 55.6200, "lon": 21.2800},
-        {"name": "Priekulė Primary School",      "type": "school",    "lat": 55.5566, "lon": 21.3115},
-        {"name": "Klaipėda Power Station",       "type": "power",     "lat": 55.7100, "lon": 21.1300},
-        {"name": "Gargždai Hospital",            "type": "hospital",  "lat": 55.7222, "lon": 21.3889},
-        {"name": "Minija Fire Station",          "type": "shelter",   "lat": 55.3531, "lon": 21.2531},
+        {"name": "Klaipėda University Hospital", "type": "hospital", "lat": 55.7067, "lon": 21.1443},
+        {"name": "Priekulė Emergency Shelter",   "type": "shelter",  "lat": 55.5446, "lon": 21.3295},
+        {"name": "Kintai Bridge",                "type": "bridge",   "lat": 55.3500, "lon": 21.2500},
+        {"name": "Minija Dam",                   "type": "dam",      "lat": 55.6200, "lon": 21.2800},
+        {"name": "Priekulė Primary School",      "type": "school",   "lat": 55.5566, "lon": 21.3115},
+        {"name": "Klaipėda Power Station",       "type": "power",    "lat": 55.7100, "lon": 21.1300},
+        {"name": "Gargždai Hospital",            "type": "hospital", "lat": 55.7222, "lon": 21.3889},
+        {"name": "Minija Fire Station",          "type": "shelter",  "lat": 55.3531, "lon": 21.2531},
     ],
     "dane": [
-        {"name": "Kaunas Clinical Hospital",     "type": "hospital",  "lat": 54.9027, "lon": 23.9096},
-        {"name": "Kaunas City Shelter",          "type": "shelter",   "lat": 54.8985, "lon": 23.9230},
-        {"name": "Dane Railway Bridge",          "type": "bridge",    "lat": 54.8960, "lon": 23.9140},
-        {"name": "Kaunas Power Plant",           "type": "power",     "lat": 54.9100, "lon": 23.8900},
-        {"name": "Vilijampolė School",           "type": "school",    "lat": 54.9200, "lon": 23.9350},
-        {"name": "Dane Fire Station",            "type": "shelter",   "lat": 54.8940, "lon": 23.9060},
+        {"name": "Klaipėda University Hospital", "type": "hospital", "lat": 55.7067, "lon": 21.1443},
+        {"name": "Klaipėda City Shelter",        "type": "shelter",  "lat": 55.7200, "lon": 21.1500},
+        {"name": "Danė Railway Bridge",          "type": "bridge",   "lat": 55.7050, "lon": 21.1350},
+        {"name": "Klaipėda Power Plant",         "type": "power",    "lat": 55.7150, "lon": 21.1200},
+        {"name": "Vitės School",                 "type": "school",   "lat": 55.7300, "lon": 21.1600},
+        {"name": "Danė Fire Station",            "type": "shelter",  "lat": 55.7080, "lon": 21.1420},
     ],
 }
 
@@ -55,10 +55,10 @@ INFRASTRUCTURE_DATA = {
 # ---------------------------------------------------------------------------
 MONITORING_STATIONS = {
     "minija": [
-        {"code": "priekules-vms",  "name": "Priekulė",        "lat": 55.549907, "lon": 21.330332, "is_main": True},
+        {"code": "priekules-vms", "name": "Priekulė", "lat": 55.549907, "lon": 21.330332, "is_main": True},
     ],
     "dane": [
-        {"code": "klaipedos-vms",      "name": "Klaipėda",   "lat": 55.755884,   "lon": 21.135223,   "is_main": True},
+        {"code": "klaipedos-vms", "name": "Klaipėda", "lat": 55.755884, "lon": 21.135223, "is_main": True},
     ],
 }
 
@@ -77,27 +77,27 @@ MINIJA_CONFIG = {
     "risk_levels": [250, 400, 550],
     "horizons": {
         "1d": {
-            "model":    "anfis_model.pth",
-            "scaler_x": "scaler_X.pkl",
-            "scaler_y": "scaler_Y.pkl",
-            "config":   "training_config.json",
-            "label":    "1-Day Forecast",
+            "model":      "anfis_model.pth",
+            "scaler_x":   "scaler_X.pkl",
+            "scaler_y":   "scaler_Y.pkl",
+            "config":     "training_config.json",
+            "label":      "1-Day Forecast",
             "days_ahead": 1,
         },
         "3d": {
-            "model":    "anfis_model_3d.pth",
-            "scaler_x": "scaler_X_3d.pkl",
-            "scaler_y": "scaler_y_3d.pkl",
-            "config":   "training_config_3d.json",
-            "label":    "3-Day Forecast",
+            "model":      "anfis_model_3d.pth",
+            "scaler_x":   "scaler_X_3d.pkl",
+            "scaler_y":   "scaler_y_3d.pkl",
+            "config":     "training_config_3d.json",
+            "label":      "3-Day Forecast",
             "days_ahead": 3,
         },
         "5d": {
-            "model":    "anfis_model_5d.pth",
-            "scaler_x": "scaler_X_5d.pkl",
-            "scaler_y": "scaler_y_5d.pkl",
-            "config":   "training_config_5d.json",
-            "label":    "5-Day Forecast",
+            "model":      "anfis_model_5d.pth",
+            "scaler_x":   "scaler_X_5d.pkl",
+            "scaler_y":   "scaler_y_5d.pkl",
+            "config":     "training_config_5d.json",
+            "label":      "5-Day Forecast",
             "days_ahead": 5,
         },
     },
@@ -141,7 +141,6 @@ DANE_CONFIG = {
     },
 }
 
-
 RIVER_CONFIGS = {
     "minija": MINIJA_CONFIG,
     "dane":   DANE_CONFIG,
@@ -151,11 +150,11 @@ RIVER_CONFIGS = {
 # MF LABELS
 # ---------------------------------------------------------------------------
 MF_LABELS = {
-    "API_norm":   {0: "Low",        1: "Medium",     2: "Extreme",    3: "High",       4: "Very High"},
-    "S_t":        {0: "Late Winter", 1: "Mid Spring", 2: "Late Jan",   3: "Mid Spring", 4: "Early Spring"},
-    "SMI_t":      {0: "Extreme",    1: "Very High",  2: "Medium",     3: "Low",        4: "High"},
-    "Pt":         {0: "High",       1: "Medium",     2: "Extreme",    3: "Very High",  4: "Low"},
-    "delta_WL_t": {0: "Very High",  1: "High",       2: "Medium",     3: "Extreme",    4: "Low"},
+    "API_norm":   {0: "Low",         1: "Medium",      2: "Extreme",     3: "High",        4: "Very High"},
+    "S_t":        {0: "Late Winter",  1: "Mid Spring",  2: "Late Jan",    3: "Mid Spring",  4: "Early Spring"},
+    "SMI_t":      {0: "Extreme",     1: "Very High",   2: "Medium",      3: "Low",         4: "High"},
+    "Pt":         {0: "High",        1: "Medium",      2: "Extreme",     3: "Very High",   4: "Low"},
+    "delta_WL_t": {0: "Very High",   1: "High",        2: "Medium",      3: "Extreme",     4: "Low"},
 }
 
 
@@ -242,30 +241,35 @@ def extract_strongest_rule(model, X_scaled, num_mfs):
         X_tensor = torch.tensor(X_scaled).float()
         fuzzified = model.layer["fuzzify"](X_tensor)
         firing_strengths = model.layer["rules"](fuzzified)
-    strengths = firing_strengths[0].numpy()
-    rule_id   = int(np.argmax(strengths))
+    strengths  = firing_strengths[0].numpy()
+    rule_id    = int(np.argmax(strengths))
     activation = float(strengths[rule_id])
-    num_inputs = 5
     mf_indices = []
     temp = rule_id
-    for _ in range(num_inputs):
+    for _ in range(5):
         mf_indices.append(temp % num_mfs)
         temp //= num_mfs
     return rule_id, activation, list(reversed(mf_indices))
 
 
 # ---------------------------------------------------------------------------
-# PREDICTION JOB  (generic – works for any config)
+# PREDICTION JOB
 # ---------------------------------------------------------------------------
 def run_prediction_job(config):
     logger.info(f"--- Running Prediction Cycle for {config['display_name']} ---")
     try:
         live_wl = fetch_water_level_latest(config["hydro_station"])
         if live_wl is None:
+            logger.warning(
+                f"[{config['display_name']}] fetch_water_level_latest returned None "
+                f"for station '{config['hydro_station']}'. Skipping."
+            )
             return
 
+        logger.info(f"[{config['display_name']}] Live water level: {live_wl} cm")
+
         today_str = datetime.now().strftime("%Y-%m-%d")
-        live_row = {"timestamp": today_str, "water_level_cm": live_wl}
+        live_row  = {"timestamp": today_str, "water_level_cm": live_wl}
         for s in config["meteo_stations"]:
             p, t = fetch_meteo_latest(s)
             live_row[f"precip_{s}_mm"] = p
@@ -285,42 +289,83 @@ def run_prediction_job(config):
 
         last_row = df_feats.iloc[-1]
         feature_display = {
-            "Water Level":          f"{live_wl} cm",
-            "Precipitation (Pt)":   f"{round(last_row['Pt'], 2)} mm",
-            "Soil Saturation (API)":f"{round(last_row['API_t'], 2)} idx",
-            "Snowmelt (SMI)":       f"{round(last_row['SMI_t'], 2)} mm",
-            "Seasonality":          f"{round(last_row['S_t'], 3)}",
-            "Trend":                f"{round(last_row['delta_WL_t'], 2)} cm",
+            "Water Level":           f"{live_wl} cm",
+            "Precipitation (Pt)":    f"{round(last_row['Pt'], 2)} mm",
+            "Soil Saturation (API)": f"{round(last_row['API_t'], 2)} idx",
+            "Snowmelt (SMI)":        f"{round(last_row['SMI_t'], 2)} mm",
+            "Seasonality":           f"{round(last_row['S_t'], 3)}",
+            "Trend":                 f"{round(last_row['delta_WL_t'], 2)} cm",
         }
 
-        all_preds    = {}
+        all_preds     = {}
         dominant_rule = ""
-        input_data   = last_row[["API_norm", "S_t", "SMI_t", "Pt", "delta_WL_t"]].values.reshape(1, -1)
+        input_data    = last_row[["API_norm", "S_t", "SMI_t", "Pt", "delta_WL_t"]].values.reshape(1, -1)
 
         for h_id, h_cfg in config["horizons"].items():
+
+            # Skip gracefully if any file for this horizon is missing
+            missing = [
+                f for f in [h_cfg["model"], h_cfg["scaler_x"], h_cfg["scaler_y"], h_cfg["config"]]
+                if not os.path.exists(f)
+            ]
+            if missing:
+                logger.warning(
+                    f"[{config['display_name']}] {h_id}: skipping — missing files: {missing}"
+                )
+                continue
+
             scaler_x = joblib.load(h_cfg["scaler_x"])
             scaler_y = joblib.load(h_cfg["scaler_y"])
+
             with open(h_cfg["config"], "r") as f:
                 num_mfs = json.load(f).get("num_mfs", 5)
 
             X_scaled = scaler_x.transform(input_data)
 
+            # Stable Bell MF initialisation — prevents a≈0 explosion on load
+            centres   = torch.linspace(0.1, 0.9, num_mfs)
             invardefs = [
-                (f"x{i}", [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)])
+                (
+                    f"x{i}",
+                    [
+                        BellMembFunc(
+                            torch.tensor([1.0]),
+                            torch.tensor([2.0]),
+                            centres[j].unsqueeze(0),
+                        )
+                        for j in range(num_mfs)
+                    ]
+                )
                 for i in range(5)
             ]
             model = AnfisNet(f"ANFIS_{h_id}", invardefs, ["y"], hybrid=True)
             ckpt  = torch.load(h_cfg["model"], map_location="cpu")
             model.load_state_dict(ckpt["model_state_dict"])
-            model.coeff = ckpt.get("consequent_coeffs") or ckpt.get("coeff")
+
+            # Coeff loading with explicit validation
+            coeff = ckpt.get("coeff") or ckpt.get("consequent_coeffs")
+            if coeff is None:
+                logger.error(
+                    f"[{config['display_name']}] {h_id}: no coeff in checkpoint "
+                    f"(keys: {list(ckpt.keys())}) — skipping."
+                )
+                continue
+            if isinstance(coeff, np.ndarray):
+                coeff = torch.tensor(coeff, dtype=torch.float32)
+            model.coeff = coeff
             model.eval()
 
             with torch.no_grad():
-                pred_chg = scaler_y.inverse_transform(
-                    model(torch.from_numpy(X_scaled).float()).numpy()
-                )[0, 0]
+                raw = model(torch.from_numpy(X_scaled).float())
 
-            pred_chg = float(pred_chg)
+            if torch.isnan(raw).any():
+                logger.error(
+                    f"[{config['display_name']}] {h_id}: model output is NaN — skipping."
+                )
+                continue
+
+            pred_chg = float(scaler_y.inverse_transform(raw.numpy())[0, 0])
+
             all_preds[h_id] = {
                 "level":  float(round(live_wl + pred_chg, 2)),
                 "change": float(round(pred_chg, 2)),
@@ -335,7 +380,11 @@ def run_prediction_job(config):
                 ]
                 dominant_rule = f"Rule #{r_id} (Act: {act:.2f}): IF " + " AND ".join(parts)
 
-        # --- Safe atomic write ---
+        if not all_preds:
+            logger.warning(f"[{config['display_name']}] No horizons produced a valid prediction.")
+            return
+
+        # Safe atomic write
         log_path = config["predictions_log_path"]
         tmp_path = log_path + ".tmp"
         log_data = {}
@@ -347,14 +396,15 @@ def run_prediction_job(config):
                 logger.warning("Corrupted log detected. Resetting.")
 
         log_data[today_str] = {
-            "actual":   float(live_wl),
-            "features": feature_display,
+            "actual":     float(live_wl),
+            "features":   feature_display,
             "fired_rule": dominant_rule,
-            "horizons": all_preds,
+            "horizons":   all_preds,
         }
         with open(tmp_path, "w") as f:
             json.dump(log_data, f, indent=4)
         os.replace(tmp_path, log_path)
+        logger.info(f"[{config['display_name']}] Log written for {today_str}")
 
     except Exception as e:
         logger.error(f"Job Failed for {config['display_name']}: {e}", exc_info=True)
@@ -370,7 +420,6 @@ def index():
 
 @app.route("/api/rivers")
 def get_rivers():
-    """Return a summary of all configured rivers (used to populate the selector)."""
     return jsonify([
         {
             "id":           key,
@@ -391,7 +440,6 @@ def get_data_api():
 
     path = config["predictions_log_path"]
     if not os.path.exists(path):
-        # Changed from 202 → 404 so res.ok is false in the frontend
         return jsonify({"error": "No prediction data yet for this river."}), 404
 
     try:
@@ -458,27 +506,23 @@ def get_data_api():
     })
 
 
-
 # ---------------------------------------------------------------------------
 # SCHEDULER
+# ---------------------------------------------------------------------------
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG), trigger="cron", minute="05")
 scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),   trigger="cron", minute="10")
 scheduler.start()
 
+
 # ---------------------------------------------------------------------------
-# STARTUP — run immediately on launch regardless of how the app is started
+# STARTUP
 # ---------------------------------------------------------------------------
 def run_startup_jobs():
-    """
-    Run prediction jobs once at startup so the dashboard has data immediately.
-    Runs in a background thread to avoid blocking Flask from starting.
-    """
     import threading
 
     def _startup():
         logger.info("=== Running startup prediction jobs ===")
-        # Small delay to let Flask finish binding the port first
         time.sleep(2)
         run_prediction_job(MINIJA_CONFIG)
         run_prediction_job(DANE_CONFIG)
@@ -487,7 +531,7 @@ def run_startup_jobs():
     t = threading.Thread(target=_startup, daemon=True)
     t.start()
 
-run_startup_jobs()   # <-- called at module level, always executes
+run_startup_jobs()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001, use_reloader=False)

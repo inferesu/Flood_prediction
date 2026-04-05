@@ -609,9 +609,9 @@
         }
     },
     "2026-04-04": {
-        "actual": 199.7,
+        "actual": 201.3,
         "features": {
-            "Water Level": "199.7 cm",
+            "Water Level": "201.3 cm",
             "Precipitation (Pt)": "0.0 mm",
             "Soil Saturation (API)": "0.25 idx",
             "Snowmelt (SMI)": "8.12 mm",
@@ -621,18 +621,47 @@
         "fired_rule": "Rule #56 (Act: 0.39): IF API_norm is Low AND S_t is Late Winter AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High",
         "horizons": {
             "1d": {
-                "level": 196.64,
+                "level": 198.24,
                 "change": -3.06,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": 186.02,
+                "level": 187.62,
                 "change": -13.68,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": 190.81,
+                "level": 192.41,
                 "change": -8.89,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-04-05": {
+        "actual": 195.6,
+        "features": {
+            "Water Level": "195.6 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.22 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality": "-0.065",
+            "Trend": "3.3 cm"
+        },
+        "fired_rule": "Rule #56 (Act: 0.33): IF API_norm is Low AND S_t is Late Winter AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High",
+        "horizons": {
+            "1d": {
+                "level": 192.46,
+                "change": -3.14,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 177.54,
+                "change": -18.06,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 181.5,
+                "change": -14.1,
                 "label": "5-Day Forecast"
             }
         }
