@@ -56,7 +56,6 @@ INFRASTRUCTURE_DATA = {
         {"name": "Kartena Fire Station",         "type": "shelter",   "lat": 55.9100, "lon": 21.4700},
         {"name": "Minija–Kartena Dam",           "type": "dam",       "lat": 55.9050, "lon": 21.4600},
     ],
-    # ── NEW ──────────────────────────────────────────────────────────────
     "dane_kretinga": [
         {"name": "Kretinga Hospital",            "type": "hospital",  "lat": 55.8833, "lon": 21.2333},
         {"name": "Kretinga Community Shelter",   "type": "shelter",   "lat": 55.8850, "lon": 21.2400},
@@ -65,6 +64,23 @@ INFRASTRUCTURE_DATA = {
         {"name": "Kretinga Primary School",      "type": "school",    "lat": 55.8900, "lon": 21.2350},
         {"name": "Kretinga Fire Station",        "type": "shelter",   "lat": 55.8620, "lon": 21.2250},
     ],
+    # ── NEW ──────────────────────────────────────────────────────────────
+    "kanalas_lankupiu": [
+        {"name": "Lankupiai Community Shelter",  "type": "shelter",   "lat": 55.6550, "lon": 21.3600},
+        {"name": "Lankupiai Bridge (Klaipėda canal)", "type": "bridge","lat": 55.6500, "lon": 21.3550},
+        {"name": "Klaipėda University Hospital", "type": "hospital",  "lat": 55.7067, "lon": 21.1443},
+        {"name": "Lankupiai Fire Station",       "type": "shelter",   "lat": 55.6520, "lon": 21.3580},
+        {"name": "Lankupiai School",             "type": "school",    "lat": 55.6570, "lon": 21.3620},
+        {"name": "Klaipėda Power Plant",         "type": "power",     "lat": 55.7150, "lon": 21.1200},
+    ],
+    "lankupiu_minija": [
+        {"name": "Lankupiai Community Shelter",  "type": "shelter",   "lat": 55.6550, "lon": 21.3900},
+        {"name": "Lankupiai Bridge (Minija)",    "type": "bridge",    "lat": 55.6500, "lon": 21.3850},
+        {"name": "Gargždai Hospital",            "type": "hospital",  "lat": 55.7222, "lon": 21.3889},
+        {"name": "Lankupiai Fire Station",       "type": "shelter",   "lat": 55.6520, "lon": 21.3870},
+        {"name": "Lankupiai Primary School",     "type": "school",    "lat": 55.6570, "lon": 21.3920},
+        {"name": "Minija Dam",                   "type": "dam",       "lat": 55.6200, "lon": 21.2800},
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -72,17 +88,23 @@ INFRASTRUCTURE_DATA = {
 # ---------------------------------------------------------------------------
 MONITORING_STATIONS = {
     "minija": [
-        {"code": "priekules-vms",  "name": "Priekulė", "lat": 55.549907, "lon": 21.330332, "is_main": True},
+        {"code": "priekules-vms",            "name": "Priekulė",              "lat": 55.549907, "lon": 21.330332, "is_main": True},
     ],
     "dane": [
-        {"code": "klaipedos-vms",  "name": "Klaipėda", "lat": 55.755884, "lon": 21.135223, "is_main": True},
+        {"code": "klaipedos-vms",            "name": "Klaipėda",              "lat": 55.755884, "lon": 21.135223, "is_main": True},
     ],
     "kartena": [
-        {"code": "kartenos-vms",   "name": "Kartena",  "lat": 55.909629, "lon": 21.467874, "is_main": True},
+        {"code": "kartenos-vms",             "name": "Kartena",               "lat": 55.909629, "lon": 21.467874, "is_main": True},
+    ],
+    "dane_kretinga": [
+        {"code": "kretingos-vms",            "name": "Kretinga",              "lat": 55.860562, "lon": 21.220636, "is_main": True},
     ],
     # ── NEW ──────────────────────────────────────────────────────────────
-    "dane_kretinga": [
-        {"code": "kretingos-vms",  "name": "Kretinga", "lat": 55.860562, "lon": 21.220636, "is_main": True},
+    "kanalas_lankupiu": [
+        {"code": "lankupiu-klaipedos-vms",   "name": "Lankupiai (Klaipėda canal)", "lat": 55.6500, "lon": 21.3550, "is_main": True},
+    ],
+    "lankupiu_minija": [
+        {"code": "lankupiu-minija-vms",      "name": "Lankupiai (Minija)",    "lat": 55.6500, "lon": 21.3850, "is_main": True},
     ],
 }
 
@@ -184,10 +206,25 @@ KARTENA_CONFIG = {
             "label":      "1-Day Forecast",
             "days_ahead": 1,
         },
+        "3d": {                                               # ← NEW
+            "model":      "kartena_anfis_model_3d.pth",
+            "scaler_x":   "kartena_scaler_X_3d.pkl",
+            "scaler_y":   "kartena_scaler_y_3d.pkl",
+            "config":     "kartena_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {                                               # ← NEW
+            "model":      "kartena_anfis_model_5d.pth",
+            "scaler_x":   "kartena_scaler_X_5d.pkl",
+            "scaler_y":   "kartena_scaler_y_5d.pkl",
+            "config":     "kartena_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
     },
 }
 
-# ── NEW ──────────────────────────────────────────────────────────────────
 DANE_KRETINGA_CONFIG = {
     "name": "dane_kretinga",
     "display_name": "Danė (Kretinga)",
@@ -207,14 +244,110 @@ DANE_KRETINGA_CONFIG = {
             "label":      "1-Day Forecast",
             "days_ahead": 1,
         },
+        "3d": {
+            "model":      "dane_kretinga_anfis_model_3d.pth",
+            "scaler_x":   "dane_kretinga_scaler_X_3d.pkl",
+            "scaler_y":   "dane_kretinga_scaler_y_3d.pkl",
+            "config":     "dane_kretinga_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "dane_kretinga_anfis_model_5d.pth",
+            "scaler_x":   "dane_kretinga_scaler_X_5d.pkl",
+            "scaler_y":   "dane_kretinga_scaler_y_5d.pkl",
+            "config":     "dane_kretinga_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+
+# ── NEW ──────────────────────────────────────────────────────────────────
+KANALAS_LANKUPIU_CONFIG = {
+    "name": "kanalas_lankupiu",
+    "display_name": "Kanalas (Lankupiai)",
+    "data_file": "live_data_kanalas_lankupiu.csv",
+    "predictions_log_path": "predictions_log_kanalas_lankupiu.json",
+    "hydro_station": "lankupiu-klaipedos-vms",
+    "lat": 55.6500,
+    "lon": 21.3550,
+    "meteo_stations": ["ventes-ams", "klaipedos-ams"],
+    "risk_levels": [150, 280, 400],
+    "horizons": {
+        "1d": {
+            "model":      "kanalas_lankupiu_anfis_model.pth",
+            "scaler_x":   "kanalas_lankupiu_scaler_X.pkl",
+            "scaler_y":   "kanalas_lankupiu_scaler_y.pkl",
+            "config":     "kanalas_lankupiu_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {                                                    # ← NEW
+            "model":      "kanalas_lankupiu_anfis_model_3d.pth",
+            "scaler_x":   "kanalas_lankupiu_scaler_X_3d.pkl",
+            "scaler_y":   "kanalas_lankupiu_scaler_y_3d.pkl",
+            "config":     "kanalas_lankupiu_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {                                                    # ← NEW
+            "model":      "kanalas_lankupiu_anfis_model_5d.pth",
+            "scaler_x":   "kanalas_lankupiu_scaler_X_5d.pkl",
+            "scaler_y":   "kanalas_lankupiu_scaler_y_5d.pkl",
+            "config":     "kanalas_lankupiu_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+
+
+LANKUPIU_MINIJA_CONFIG = {
+    "name": "lankupiu_minija",
+    "display_name": "Minija (Lankupiai)",
+    "data_file": "live_data_lankupiu_minija.csv",
+    "predictions_log_path": "predictions_log_lankupiu_minija.json",
+    "hydro_station": "lankupiu-minija-vms",
+    "lat": 55.6500,
+    "lon": 21.3850,
+    "meteo_stations": ["ventes-ams", "klaipedos-ams"],
+    "risk_levels": [200, 350, 500],
+    "horizons": {
+        "1d": {
+            "model":      "lankupiu_minija_anfis_model.pth",
+            "scaler_x":   "lankupiu_minija_scaler_X.pkl",
+            "scaler_y":   "lankupiu_minija_scaler_y.pkl",
+            "config":     "lankupiu_minija_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {                                                    # ← NEW
+            "model":      "lankupiu_minija_anfis_model_3d.pth",
+            "scaler_x":   "lankupiu_minija_scaler_X_3d.pkl",
+            "scaler_y":   "lankupiu_minija_scaler_y_3d.pkl",
+            "config":     "lankupiu_minija_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {                                                    # ← NEW
+            "model":      "lankupiu_minija_anfis_model_5d.pth",
+            "scaler_x":   "lankupiu_minija_scaler_X_5d.pkl",
+            "scaler_y":   "lankupiu_minija_scaler_y_5d.pkl",
+            "config":     "lankupiu_minija_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
     },
 }
 
 RIVER_CONFIGS = {
-    "minija":        MINIJA_CONFIG,
-    "dane":          DANE_CONFIG,
-    "kartena":       KARTENA_CONFIG,
-    "dane_kretinga": DANE_KRETINGA_CONFIG,   # ── NEW ──
+    "minija":           MINIJA_CONFIG,
+    "dane":             DANE_CONFIG,
+    "kartena":          KARTENA_CONFIG,
+    "dane_kretinga":    DANE_KRETINGA_CONFIG,
+    "kanalas_lankupiu": KANALAS_LANKUPIU_CONFIG,   # ── NEW ──
+    "lankupiu_minija":  LANKUPIU_MINIJA_CONFIG,    # ── NEW ──
 }
 
 # ---------------------------------------------------------------------------
@@ -578,10 +711,12 @@ def get_data_api():
 # SCHEDULER
 # ---------------------------------------------------------------------------
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG),        trigger="cron", minute="05")
-scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),          trigger="cron", minute="10")
-scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),       trigger="cron", minute="15")
-scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG), trigger="cron", minute="20")  # ── NEW
+scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG),           trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),             trigger="cron", minute="10")
+scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),          trigger="cron", minute="15")
+scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),    trigger="cron", minute="20")
+scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG), trigger="cron", minute="25")  # ── NEW
+scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),  trigger="cron", minute="30")  # ── NEW
 scheduler.start()
 
 
@@ -597,7 +732,9 @@ def run_startup_jobs():
         run_prediction_job(MINIJA_CONFIG)
         run_prediction_job(DANE_CONFIG)
         run_prediction_job(KARTENA_CONFIG)
-        run_prediction_job(DANE_KRETINGA_CONFIG)   # ── NEW
+        run_prediction_job(DANE_KRETINGA_CONFIG)
+        run_prediction_job(KANALAS_LANKUPIU_CONFIG)   # ── NEW
+        run_prediction_job(LANKUPIU_MINIJA_CONFIG)    # ── NEW
         logger.info("=== Startup prediction jobs complete ===")
 
     t = threading.Thread(target=_startup, daemon=True)
@@ -606,4 +743,4 @@ def run_startup_jobs():
 run_startup_jobs()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False)
