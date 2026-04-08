@@ -133,26 +133,26 @@
 </div><!-- /max-w -->
 
 <script>
-// ── RIVER COLOUR MAP ──────────────────────────────────────────────────────
+// ── RIVER COLOURS — used only for selector pills and chart lines ──────────
 const RIVER_COLORS = {
-    minija:           "#3b82f6",   // blue
-    dane:             "#f97316",   // orange
-    kartena:          "#10b981",   // green
-    dane_kretinga:    "#e879f9",   // pink
-    kanalas_lankupiu: "#facc15",   // yellow  ← NEW
-    lankupiu_minija:  "#38bdf8",   // sky     ← NEW
+    minija:           "#3b82f6",
+    dane:             "#f97316",
+    kartena:          "#10b981",
+    dane_kretinga:    "#e879f9",
+    kanalas_lankupiu: "#facc15",
+    lankupiu_minija:  "#38bdf8",
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let activeRiver = "minija";
-let allRivers   = [];      // [{id, display_name, lat, lon}]
-let riverData   = {};      // { riverKey: apiResponse | null }
+let allRivers   = [];
+let riverData   = {};
 let chart;
 
 // ── MAP STATE ─────────────────────────────────────────────────────────────
 let map;
-let riverMarkers       = {};
-let floodZoneLayers    = [];
+let riverMarkers        = {};
+let floodZoneLayers     = [];
 let infrastructureLayer = L.layerGroup();
 let stationsLayer       = L.layerGroup();
 
@@ -180,17 +180,41 @@ function initMap() {
         "🏥 Critical Infrastructure": infrastructureLayer,
         "📍 Monitoring Stations":      stationsLayer,
     }, { position: "topright" }).addTo(map);
+
+    // ── Risk legend ────────────────────────────────────────────────────
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = () => {
+        const div = L.DomUtil.create("div");
+        div.style.cssText = `
+            background:#1e293b; border:1px solid #334155; border-radius:8px;
+            padding:10px 14px; font-family:Lato,sans-serif; font-size:12px;
+            color:#e2e8f0; line-height:1.8;
+        `;
+        div.innerHTML = `
+            <b style="display:block;margin-bottom:4px;">Water Level Risk</b>
+            <span style="color:#10b981">●</span> Low<br>
+            <span style="color:#f59e0b">●</span> Moderate<br>
+            <span style="color:#ef4444">●</span> High<br>
+            <span style="color:#a855f7">●</span> Severe
+        `;
+        return div;
+    };
+    legend.addTo(map);
 }
 
 function refreshRiverMarkers() {
     allRivers.forEach(r => {
-        const data  = riverData[r.id];          // may be null
+        const data  = riverData[r.id];
         const level = data?.horizons?.["1d"]?.level ?? 0;
-        const color = RIVER_COLORS[r.id] ?? "#94a3b8";
+
+        // ── Marker colour comes from RISK level, not river identity ──
+        const markerColor = getRiskColor(level, data?.riskLevels);
+        // Pill button colour stays river-specific
+        const pillColor   = RIVER_COLORS[r.id] ?? "#94a3b8";
 
         if (riverMarkers[r.id]) map.removeLayer(riverMarkers[r.id]);
 
-        const levelText = data?.lastKnownLevel != null
+        const levelText    = data?.lastKnownLevel != null
             ? `${data.lastKnownLevel} cm` : "No data yet";
         const forecastText = data?.horizons?.["1d"]
             ? `${level} cm` : "—";
@@ -201,19 +225,19 @@ function refreshRiverMarkers() {
                 <hr style="border-color:#334155;margin:6px 0;">
                 <span style="color:#94a3b8;">Current:</span> <b>${levelText}</b><br>
                 <span style="color:#94a3b8;">1-Day Forecast:</span>
-                <b style="color:${color};">${forecastText}</b><br>
+                <b style="color:${markerColor};">${forecastText}</b><br>
                 ${data ? `<span style="color:#94a3b8;">Risk:</span>
-                <b>${getRiskLabel(level, data.riskLevels)}</b><br>` : ""}
+                <b style="color:${markerColor};">${getRiskLabel(level, data.riskLevels)}</b><br>` : ""}
                 <a href="#" onclick="switchRiver('${r.id}');return false;"
-                   style="color:${color};font-size:11px;">▶ Select this river</a>
+                   style="color:${pillColor};font-size:11px;">▶ Select this river</a>
             </div>`;
 
         riverMarkers[r.id] = L.circleMarker([r.lat, r.lon], {
             radius:      14,
-            color:       color,
-            fillColor:   color,
-            fillOpacity: r.id === activeRiver ? 0.85 : 0.45,
-            weight:      r.id === activeRiver ? 4 : 2,
+            color:       markerColor,
+            fillColor:   markerColor,
+            fillOpacity: r.id === activeRiver ? 0.85 : 0.50,
+            weight:      r.id === activeRiver ? 4    : 2,
         }).addTo(map).bindPopup(popupHtml);
 
         riverMarkers[r.id].on("click", () => switchRiver(r.id));
@@ -255,6 +279,7 @@ function refreshStations(data) {
     stationsLayer.clearLayers();
     if (!data?.stations) return;
     data.stations.forEach(s => {
+        // Station markers also use risk colour
         const color = getRiskColor(s.forecast, data.riskLevels);
         L.circleMarker([s.lat, s.lon], {
             radius: 7, color, fillColor: color, fillOpacity: 0.8, weight: 2,
@@ -317,12 +342,9 @@ async function refreshAllRivers() {
         try {
             const res = await fetch(`/api/data?river=${r.id}`);
             if (res.ok) {
-                // Only store data when the response is genuinely successful
                 const body = await res.json();
-                // Guard: if the body has an error field, treat as no data
                 riverData[r.id] = body.error ? null : body;
             } else {
-                // 404 / 500 — no data available yet for this river
                 riverData[r.id] = null;
             }
         } catch (e) {
@@ -334,7 +356,7 @@ async function refreshAllRivers() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// RIVER SELECTOR
+// RIVER SELECTOR  — pills keep unique river colours
 // ─────────────────────────────────────────────────────────────────────────
 function buildSelector() {
     const container = document.getElementById("river-selector");
@@ -355,31 +377,32 @@ function buildSelector() {
 function switchRiver(id) {
     activeRiver = id;
 
-    // Update pill button styles
     allRivers.forEach(r => {
         const btn = document.getElementById(`btn-${r.id}`);
         if (btn) btn.className = `river-btn ${r.id === id ? "active" : ""}`;
     });
 
-    // Update marker opacity so the active river stands out
+    // Re-apply marker styles (active gets heavier border, all keep risk colour)
     allRivers.forEach(r => {
         if (riverMarkers[r.id]) {
+            const data        = riverData[r.id];
+            const level       = data?.horizons?.["1d"]?.level ?? 0;
+            const markerColor = getRiskColor(level, data?.riskLevels);
             riverMarkers[r.id].setStyle({
-                fillOpacity: r.id === id ? 0.85 : 0.45,
+                color:       markerColor,
+                fillColor:   markerColor,
+                fillOpacity: r.id === id ? 0.85 : 0.50,
                 weight:      r.id === id ? 4    : 2,
             });
         }
     });
 
-    // Pan/zoom map to the selected river
     const r = allRivers.find(x => x.id === id);
     if (r) map.flyTo([r.lat, r.lon], 10, { duration: 0.8 });
 
-    // ── KEY FIX: clear the panel before rendering new river data ──
     clearStatsPanel();
 
-    const data = riverData[id];   // may be null if job hasn't run yet
-
+    const data = riverData[id];
     updateStatsPanel(data);
     refreshFloodZones(data);
     refreshStations(data);
@@ -389,8 +412,6 @@ function switchRiver(id) {
 // ─────────────────────────────────────────────────────────────────────────
 // STATS PANEL
 // ─────────────────────────────────────────────────────────────────────────
-
-/** Reset every metric to "-- cm" and hide optional cards. */
 function clearStatsPanel() {
     document.getElementById("current-level").textContent = "-- cm";
     document.getElementById("pred-1d").textContent       = "-- cm";
@@ -405,10 +426,8 @@ function clearStatsPanel() {
     document.getElementById("last-updated").textContent    = "--";
     document.getElementById("chart-title").textContent     = "Historical vs Forecast";
 
-    // Destroy chart so a stale one isn't left behind
     if (chart) { chart.destroy(); chart = null; }
 
-    // Hide the "no data" notice until we know we need it
     document.getElementById("no-data-notice").classList.add("hidden");
     document.getElementById("metric-cards").classList.remove("hidden");
 }
@@ -418,7 +437,6 @@ function updateStatsPanel(data) {
     panel.style.opacity = "0";
     setTimeout(() => { panel.style.opacity = "1"; }, 50);
 
-    // ── No data yet for this river ──────────────────────────────────────
     if (!data) {
         document.getElementById("no-data-notice").classList.remove("hidden");
         document.getElementById("metric-cards").classList.add("hidden");
@@ -430,19 +448,15 @@ function updateStatsPanel(data) {
 
     const riskLevels = data.riskLevels ?? [250, 400, 550];
 
-    // Current level
     document.getElementById("current-level").textContent =
         data.lastKnownLevel != null ? `${data.lastKnownLevel} cm` : "-- cm";
 
-    // Last updated
     document.getElementById("last-updated").textContent =
         new Date(data.lastUpdated).toLocaleString();
 
-    // Chart title
     document.getElementById("chart-title").textContent =
         `${data.riverName} – Historical vs Forecast`;
 
-    // 1-day forecast (always available when there is data)
     const h1d = data.horizons?.["1d"];
     if (h1d) {
         document.getElementById("pred-1d").textContent = `${h1d.level} cm`;
@@ -451,8 +465,7 @@ function updateStatsPanel(data) {
             getRiskClass(h1d.level, riskLevels);
     }
 
-    // 3-day forecast — dim the card if this river has no 3d model
-    const h3d = data.horizons?.["3d"];
+    const h3d    = data.horizons?.["3d"];
     const card3d = document.getElementById("card-3d");
     if (h3d) {
         document.getElementById("pred-3d").textContent = `${h3d.level} cm`;
@@ -462,8 +475,7 @@ function updateStatsPanel(data) {
         card3d.classList.add("horizon-card-hidden");
     }
 
-    // 5-day forecast — same treatment
-    const h5d = data.horizons?.["5d"];
+    const h5d    = data.horizons?.["5d"];
     const card5d = document.getElementById("card-5d");
     if (h5d) {
         document.getElementById("pred-5d").textContent = `${h5d.level} cm`;
@@ -473,7 +485,6 @@ function updateStatsPanel(data) {
         card5d.classList.add("horizon-card-hidden");
     }
 
-    // Environmental inputs
     const featGrid = document.getElementById("features-grid");
     featGrid.innerHTML = "";
     if (data.currentFeatures) {
@@ -486,22 +497,19 @@ function updateStatsPanel(data) {
         });
     }
 
-    // Fired rule
     document.getElementById("fired-rule-text").textContent =
         data.firedRule || "No rule data.";
 
-    // Chart
     renderChart(data.historicalData ?? [], data.riverKey);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// CHART
+// CHART — actual line uses river colour; forecasts use fixed colours
 // ─────────────────────────────────────────────────────────────────────────
 function renderChart(history, riverKey) {
     const ctx = document.getElementById("forecast-chart").getContext("2d");
     if (chart) { chart.destroy(); chart = null; }
 
-    // Consolidate rows sharing the same date
     const dateMap = {};
     history.forEach(item => {
         if (!dateMap[item.date]) {
@@ -569,10 +577,10 @@ function renderChart(history, riverKey) {
 // ─────────────────────────────────────────────────────────────────────────
 function getRiskColor(level, riskLevels) {
     const [r1, r2, r3] = riskLevels ?? [250, 400, 550];
-    if (level > r3) return "#a855f7";
-    if (level > r2) return "#ef4444";
-    if (level > r1) return "#f59e0b";
-    return "#10b981";
+    if (level > r3) return "#a855f7";   // severe  — purple
+    if (level > r2) return "#ef4444";   // high    — red
+    if (level > r1) return "#f59e0b";   // moderate — amber
+    return "#10b981";                   // low     — green
 }
 
 function getRiskClass(level, riskLevels) {
@@ -616,7 +624,6 @@ function getDistance(lat1, lon1, lat2, lon2) {
 // ─────────────────────────────────────────────────────────────────────────
 async function periodicRefresh() {
     await refreshAllRivers();
-    // Re-render stats only for the currently active river
     clearStatsPanel();
     const data = riverData[activeRiver];
     updateStatsPanel(data);
@@ -630,5 +637,6 @@ window.onload = () => {
     setInterval(periodicRefresh, 300_000);
 };
 </script>
+
 </body>
 </html>
