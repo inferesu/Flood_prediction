@@ -89,6 +89,30 @@ INFRASTRUCTURE_DATA = {
         {"name": "Birštonas Fire Station",       "type": "shelter",   "lat": 54.6130, "lon": 24.0310},
         {"name": "Marios Power Station",         "type": "power",     "lat": 54.6100, "lon": 24.0280},
     ],
+    "nemunas_nemajunai": [
+        {"name": "Nemajūnai Community Shelter",  "type": "shelter",   "lat": 54.5542, "lon": 24.0720},
+        {"name": "Nemajūnai Bridge",             "type": "bridge",    "lat": 54.5530, "lon": 24.0710},
+        {"name": "Alytus Hospital",              "type": "hospital",  "lat": 54.4000, "lon": 24.0460},
+        {"name": "Nemajūnai Primary School",     "type": "school",    "lat": 54.5560, "lon": 24.0730},
+        {"name": "Nemajūnai Fire Station",       "type": "shelter",   "lat": 54.5520, "lon": 24.0700},
+        {"name": "Nemunas Power Station",        "type": "power",     "lat": 54.5500, "lon": 24.0680},
+    ],
+    "nemunas_darsuniskis": [
+        {"name": "Darsūniškis Community Shelter", "type": "shelter",  "lat": 54.3700, "lon": 24.2100},
+        {"name": "Darsūniškis Bridge",            "type": "bridge",   "lat": 54.3690, "lon": 24.2090},
+        {"name": "Kaišiadorys Hospital",          "type": "hospital", "lat": 54.8650, "lon": 24.4500},
+        {"name": "Darsūniškis Primary School",    "type": "school",   "lat": 54.3710, "lon": 24.2110},
+        {"name": "Darsūniškis Fire Station",      "type": "shelter",  "lat": 54.3680, "lon": 24.2080},
+        {"name": "Nemunas Power Station",         "type": "power",    "lat": 54.3660, "lon": 24.2060},
+    ],
+    "nemunas_lampedziai": [
+        {"name": "Lampėdžiai Community Shelter", "type": "shelter", "lat": 54.9064, "lon": 23.8176},
+        {"name": "Lampėdžiai Bridge", "type": "bridge", "lat": 54.9050, "lon": 23.8160},
+        {"name": "Kaunas University Hospital", "type": "hospital", "lat": 54.9027, "lon": 23.9096},
+        {"name": "Lampėdžiai Primary School", "type": "school", "lat": 54.9075, "lon": 23.8190},
+        {"name": "Lampėdžiai Fire Station", "type": "shelter", "lat": 54.9040, "lon": 23.8150},
+        {"name": "Nemunas Power Station", "type": "power", "lat": 54.9020, "lon": 23.8130},
+    ],
 
 }
 
@@ -117,6 +141,15 @@ MONITORING_STATIONS = {
     ],
     "marios_birstonas": [
         {"code": "birstono-vms", "name": "Birštonas", "lat": 54.613520, "lon": 24.033594, "is_main": True},
+    ],
+    "nemunas_nemajunai": [
+        {"code": "nemajunu-vms", "name": "Nemajūnai", "lat": 54.554227, "lon": 24.072006, "is_main": True},
+    ],
+    "nemunas_darsuniskis": [
+        {"code": "darsuniskio-vms", "name": "Darsūniškis", "lat": 54.3700, "lon": 24.2100, "is_main": True},
+    ],
+    "nemunas_lampedziai": [
+        {"code": "lampedziu-vms", "name": "Lampėdžiai", "lat": 54.906414, "lon": 23.817574, "is_main": True},
     ],
 
 }
@@ -393,6 +426,120 @@ MARIOS_BIRSTONAS_CONFIG = {
         },
     },
 }
+NEMUNAS_NEMAJUNAI_CONFIG = {
+    "name": "nemunas_nemajunai",
+    "display_name": "Nemunas (Nemajūnai)",
+    "data_file": "live_data_nemunas_nemajunai.csv",
+    "predictions_log_path": "predictions_log_nemunas_nemajunai.json",
+    "hydro_station": "nemajunu-vms",
+    "lat": 54.554227,
+    "lon": 24.072006,
+    "meteo_stations": ["birstono-ams", "alytaus-ams"],
+    "risk_levels": [300, 500, 700],
+    "horizons": {
+        "1d": {
+            "model":      "nemunas_nemajunai_anfis_model.pth",
+            "scaler_x":   "nemunas_nemajunai_scaler_X.pkl",
+            "scaler_y":   "nemunas_nemajunai_scaler_y.pkl",
+            "config":     "nemunas_nemajunai_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "nemunas_nemajunai_anfis_model_3d.pth",
+            "scaler_x":   "nemunas_nemajunai_scaler_X_3d.pkl",
+            "scaler_y":   "nemunas_nemajunai_scaler_y_3d.pkl",
+            "config":     "nemunas_nemajunai_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "nemunas_nemajunai_anfis_model_5d.pth",
+            "scaler_x":   "nemunas_nemajunai_scaler_X_5d.pkl",
+            "scaler_y":   "nemunas_nemajunai_scaler_y_5d.pkl",
+            "config":     "nemunas_nemajunai_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+NEMUNAS_DARSUNISKIS_CONFIG = {
+    "name": "nemunas_darsuniskis",
+    "display_name": "Nemunas (Darsūniškis)",
+    "data_file": "live_data_nemunas_darsuniskis.csv",
+    "predictions_log_path": "predictions_log_nemunas_darsuniskis.json",
+    "hydro_station": "darsuniskio-vms",
+    "lat": 54.3700,
+    "lon": 24.2100,
+    "meteo_stations": ["kauno-ams"],
+    "risk_levels": [300, 500, 700],
+    "horizons": {
+        "1d": {
+            "model":      "nemunas_darsuniskis_anfis_model.pth",
+            "scaler_x":   "nemunas_darsuniskis_scaler_X.pkl",
+            "scaler_y":   "nemunas_darsuniskis_scaler_y.pkl",
+            "config":     "nemunas_darsuniskis_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "nemunas_darsuniskis_anfis_model_3d.pth",
+            "scaler_x":   "nemunas_darsuniskis_scaler_X_3d.pkl",
+            "scaler_y":   "nemunas_darsuniskis_scaler_y_3d.pkl",
+            "config":     "nemunas_darsuniskis_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "nemunas_darsuniskis_anfis_model_5d.pth",
+            "scaler_x":   "nemunas_darsuniskis_scaler_X_5d.pkl",
+            "scaler_y":   "nemunas_darsuniskis_scaler_y_5d.pkl",
+            "config":     "nemunas_darsuniskis_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+NEMUNAS_LAMPEDZIAI_CONFIG = {
+    "name": "nemunas_lampedziai",
+    "display_name": "Nemunas (Lampėdžiai)",
+    "data_file": "live_data_nemunas_lampedziai.csv",
+    "predictions_log_path": "predictions_log_nemunas_lampedziai.json",
+    "hydro_station": "lampedziu-vms",
+    "lat": 54.906414,
+    "lon": 23.817574,
+    "meteo_stations": ["kauno-ams"],
+    "risk_levels": [300, 500, 700],
+    "horizons": {
+        "1d": {
+            "model":      "nemunas_lampedziai_anfis_model.pth",
+            "scaler_x":   "nemunas_lampedziai_scaler_X.pkl",
+            "scaler_y":   "nemunas_lampedziai_scaler_y.pkl",
+            "config":     "nemunas_lampedziai_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "nemunas_lampedziai_anfis_model_3d.pth",
+            "scaler_x":   "nemunas_lampedziai_scaler_X_3d.pkl",
+            "scaler_y":   "nemunas_lampedziai_scaler_y_3d.pkl",
+            "config":     "nemunas_lampedziai_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "nemunas_lampedziai_anfis_model_5d.pth",
+            "scaler_x":   "nemunas_lampedziai_scaler_X_5d.pkl",
+            "scaler_y":   "nemunas_lampedziai_scaler_y_5d.pkl",
+            "config":     "nemunas_lampedziai_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+
+
+
 
 
 RIVER_CONFIGS = {
@@ -400,9 +547,12 @@ RIVER_CONFIGS = {
     "dane":             DANE_CONFIG,
     "kartena":          KARTENA_CONFIG,
     "dane_kretinga":    DANE_KRETINGA_CONFIG,
-    "kanalas_lankupiu": KANALAS_LANKUPIU_CONFIG,   # ── NEW ──
+    "kanalas_lankupiu": KANALAS_LANKUPIU_CONFIG,
     "lankupiu_minija":  LANKUPIU_MINIJA_CONFIG,
-    "marios_birstonas":  MARIOS_BIRSTONAS_CONFIG,# ── NEW ──
+    "marios_birstonas":  MARIOS_BIRSTONAS_CONFIG,
+    "nemunas_nemajunai":  NEMUNAS_NEMAJUNAI_CONFIG,
+    "nemunas_darsuniskis":  NEMUNAS_DARSUNISKIS_CONFIG,
+    "nemunas_lampedziai":   NEMUNAS_LAMPEDZIAI_CONFIG,
 }
 
 # ---------------------------------------------------------------------------
@@ -766,13 +916,17 @@ def get_data_api():
 # SCHEDULER
 # ---------------------------------------------------------------------------
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG),           trigger="cron", minute="05")
-scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),             trigger="cron", minute="10")
-scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),          trigger="cron", minute="15")
-scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),    trigger="cron", minute="20")
-scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG), trigger="cron", minute="25")  # ── NEW
-scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),  trigger="cron", minute="30")
-scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG), trigger="cron", minute="35")  # ← NEW
+scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG),            trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),              trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),           trigger="cron", minute="10")
+scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),     trigger="cron", minute="10")
+scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG),  trigger="cron", minute="15")
+scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),   trigger="cron", minute="15")
+scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG),  trigger="cron", minute="20")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_NEMAJUNAI_CONFIG), trigger="cron", minute="20")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_DARSUNISKIS_CONFIG), trigger="cron", minute="25")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_LAMPEDZIAI_CONFIG), trigger="cron", minute="30")  # ← NEW
+# ← NEW
 scheduler.start()
 
 
@@ -782,22 +936,45 @@ scheduler.start()
 def run_startup_jobs():
     import threading
 
+    def _run_one(cfg):
+        try:
+            run_prediction_job(cfg)
+        except Exception as e:
+            logger.error(f"Startup job failed for {cfg['display_name']}: {e}")
+
     def _startup():
         logger.info("=== Running startup prediction jobs ===")
         time.sleep(2)
-        run_prediction_job(MINIJA_CONFIG)
-        run_prediction_job(DANE_CONFIG)
-        run_prediction_job(KARTENA_CONFIG)
-        run_prediction_job(DANE_KRETINGA_CONFIG)
-        run_prediction_job(KANALAS_LANKUPIU_CONFIG)   # ── NEW
-        run_prediction_job(LANKUPIU_MINIJA_CONFIG)
-        run_prediction_job(MARIOS_BIRSTONAS_CONFIG)# ── NEW
+
+        configs = [
+            MINIJA_CONFIG,
+            DANE_CONFIG,
+            KARTENA_CONFIG,
+            DANE_KRETINGA_CONFIG,
+            KANALAS_LANKUPIU_CONFIG,
+            LANKUPIU_MINIJA_CONFIG,
+            MARIOS_BIRSTONAS_CONFIG,
+            NEMUNAS_NEMAJUNAI_CONFIG,
+            NEMUNAS_DARSUNISKIS_CONFIG,
+            NEMUNAS_LAMPEDZIAI_CONFIG,# ← was duplicating MARIOS before
+        ]
+
+        threads = [
+            threading.Thread(target=_run_one, args=(cfg,), daemon=True)
+            for cfg in configs
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
         logger.info("=== Startup prediction jobs complete ===")
 
-    t = threading.Thread(target=_startup, daemon=True)
-    t.start()
+    threading.Thread(target=_startup, daemon=True).start()
 
 run_startup_jobs()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001, use_reloader=False)
+    app.run(debug=True, port=5002, use_reloader=False)
+
+

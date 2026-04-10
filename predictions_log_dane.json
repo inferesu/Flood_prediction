@@ -174,9 +174,9 @@
         }
     },
     "2026-04-10": {
-        "actual": 84.4,
+        "actual": 85.6,
         "features": {
-            "Water Level": "84.4 cm",
+            "Water Level": "85.6 cm",
             "Precipitation (Pt)": "0.0 mm",
             "Soil Saturation (API)": "2.06 idx",
             "Snowmelt (SMI)": "0.0 mm",
@@ -186,17 +186,17 @@
         "fired_rule": "Rule #126 (Act: 1.00): IF API_norm is Low AND S_t is Mid Spring AND SMI_t is Extreme AND Pt is High AND delta_WL_t is High",
         "horizons": {
             "1d": {
-                "level": 77.66,
-                "change": -6.74,
+                "level": 71.18,
+                "change": -14.42,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": 78.26,
+                "level": 79.46,
                 "change": -6.14,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": 81.91,
+                "level": 83.11,
                 "change": -2.49,
                 "label": "5-Day Forecast"
             }
