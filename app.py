@@ -81,6 +81,15 @@ INFRASTRUCTURE_DATA = {
         {"name": "Lankupiai Primary School",     "type": "school",    "lat": 55.6570, "lon": 21.3920},
         {"name": "Minija Dam",                   "type": "dam",       "lat": 55.6200, "lon": 21.2800},
     ],
+    "marios_birstonas": [
+        {"name": "Birštonas Hospital",           "type": "hospital",  "lat": 54.6135, "lon": 24.0336},
+        {"name": "Birštonas Community Shelter",  "type": "shelter",   "lat": 54.6150, "lon": 24.0350},
+        {"name": "Birštonas Bridge",             "type": "bridge",    "lat": 54.6120, "lon": 24.0320},
+        {"name": "Birštonas Primary School",     "type": "school",    "lat": 54.6160, "lon": 24.0360},
+        {"name": "Birštonas Fire Station",       "type": "shelter",   "lat": 54.6130, "lon": 24.0310},
+        {"name": "Marios Power Station",         "type": "power",     "lat": 54.6100, "lon": 24.0280},
+    ],
+
 }
 
 # ---------------------------------------------------------------------------
@@ -106,6 +115,10 @@ MONITORING_STATIONS = {
     "lankupiu_minija": [
         {"code": "lankupiu-minija-vms",      "name": "Lankupiai (Minija)",    "lat": 55.6500, "lon": 21.3850, "is_main": True},
     ],
+    "marios_birstonas": [
+        {"code": "birstono-vms", "name": "Birštonas", "lat": 54.613520, "lon": 24.033594, "is_main": True},
+    ],
+
 }
 
 # ---------------------------------------------------------------------------
@@ -301,8 +314,6 @@ KANALAS_LANKUPIU_CONFIG = {
         },
     },
 }
-
-
 LANKUPIU_MINIJA_CONFIG = {
     "name": "lankupiu_minija",
     "display_name": "Minija (Lankupiai)",
@@ -338,8 +349,51 @@ LANKUPIU_MINIJA_CONFIG = {
             "label":      "5-Day Forecast",
             "days_ahead": 5,
         },
+
+    },
+
+}
+# ---------------------------------------------------------------------------
+# NEW CONFIG
+# ---------------------------------------------------------------------------
+MARIOS_BIRSTONAS_CONFIG = {
+    "name": "marios_birstonas",
+    "display_name": "Marios (Birštonas)",
+    "data_file": "live_data_marios_birstonas.csv",
+    "predictions_log_path": "predictions_log_marios_birstonas.json",
+    "hydro_station": "birstono-vms",
+    "lat": 54.613520,
+    "lon": 24.033594,
+    "meteo_stations": ["birstono-ams"],
+    "risk_levels": [200, 350, 500],
+    "horizons": {
+        "1d": {
+            "model":      "marios_birstonas_anfis_model.pth",
+            "scaler_x":   "marios_birstonas_scaler_X.pkl",
+            "scaler_y":   "marios_birstonas_scaler_y.pkl",
+            "config":     "marios_birstonas_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "marios_birstonas_anfis_model_3d.pth",
+            "scaler_x":   "marios_birstonas_scaler_X_3d.pkl",
+            "scaler_y":   "marios_birstonas_scaler_y_3d.pkl",
+            "config":     "marios_birstonas_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "marios_birstonas_anfis_model_5d.pth",
+            "scaler_x":   "marios_birstonas_scaler_X_5d.pkl",
+            "scaler_y":   "marios_birstonas_scaler_y_5d.pkl",
+            "config":     "marios_birstonas_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
     },
 }
+
 
 RIVER_CONFIGS = {
     "minija":           MINIJA_CONFIG,
@@ -347,7 +401,8 @@ RIVER_CONFIGS = {
     "kartena":          KARTENA_CONFIG,
     "dane_kretinga":    DANE_KRETINGA_CONFIG,
     "kanalas_lankupiu": KANALAS_LANKUPIU_CONFIG,   # ── NEW ──
-    "lankupiu_minija":  LANKUPIU_MINIJA_CONFIG,    # ── NEW ──
+    "lankupiu_minija":  LANKUPIU_MINIJA_CONFIG,
+    "marios_birstonas":  MARIOS_BIRSTONAS_CONFIG,# ── NEW ──
 }
 
 # ---------------------------------------------------------------------------
@@ -716,7 +771,8 @@ scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),             trig
 scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),          trigger="cron", minute="15")
 scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),    trigger="cron", minute="20")
 scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG), trigger="cron", minute="25")  # ── NEW
-scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),  trigger="cron", minute="30")  # ── NEW
+scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),  trigger="cron", minute="30")
+scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG), trigger="cron", minute="35")  # ← NEW
 scheduler.start()
 
 
@@ -734,7 +790,8 @@ def run_startup_jobs():
         run_prediction_job(KARTENA_CONFIG)
         run_prediction_job(DANE_KRETINGA_CONFIG)
         run_prediction_job(KANALAS_LANKUPIU_CONFIG)   # ── NEW
-        run_prediction_job(LANKUPIU_MINIJA_CONFIG)    # ── NEW
+        run_prediction_job(LANKUPIU_MINIJA_CONFIG)
+        run_prediction_job(MARIOS_BIRSTONAS_CONFIG)# ── NEW
         logger.info("=== Startup prediction jobs complete ===")
 
     t = threading.Thread(target=_startup, daemon=True)
