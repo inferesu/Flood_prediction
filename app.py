@@ -113,6 +113,14 @@ INFRASTRUCTURE_DATA = {
         {"name": "Lampėdžiai Fire Station", "type": "shelter", "lat": 54.9040, "lon": 23.8150},
         {"name": "Nemunas Power Station", "type": "power", "lat": 54.9020, "lon": 23.8130},
     ],
+    "vilnia_vilnius": [
+        {"name": "Vilnius University Hospital", "type": "hospital", "lat": 54.6872, "lon": 25.2797},
+        {"name": "Vilnius City Shelter", "type": "shelter", "lat": 54.6890, "lon": 25.2750},
+        {"name": "Vilnia Bridge", "type": "bridge", "lat": 54.6860, "lon": 25.2810},
+        {"name": "Vilnius Primary School", "type": "school", "lat": 54.6900, "lon": 25.2820},
+        {"name": "Vilnius Fire Station", "type": "shelter", "lat": 54.6850, "lon": 25.2780},
+        {"name": "Vilnius Power Station", "type": "power", "lat": 54.6840, "lon": 25.2760},
+    ],
 
 }
 
@@ -150,6 +158,9 @@ MONITORING_STATIONS = {
     ],
     "nemunas_lampedziai": [
         {"code": "lampedziu-vms", "name": "Lampėdžiai", "lat": 54.906414, "lon": 23.817574, "is_main": True},
+    ],
+    "vilnia_vilnius": [
+        {"code": "vilniaus-vilnia-vms", "name": "Vilnius (Vilnia)", "lat": 54.679215, "lon": 25.294857, "is_main": True},
     ],
 
 }
@@ -537,6 +548,44 @@ NEMUNAS_LAMPEDZIAI_CONFIG = {
         },
     },
 }
+VILNIA_VILNIUS_CONFIG = {
+    "name": "vilnia_vilnius",
+    "display_name": "Vilnia (Vilnius)",
+    "data_file": "live_data_vilnia_vilnius.csv",
+    "predictions_log_path": "predictions_log_vilnia_vilnius.json",
+    "hydro_station": "vilniaus-vilnia-vms",
+    "lat": 54.6872,
+    "lon": 25.2797,
+    "meteo_stations": ["vilniaus-ams"],
+    "risk_levels": [150, 280, 400],
+    "horizons": {
+        "1d": {
+            "model":      "vilnia_vilnius_anfis_model.pth",
+            "scaler_x":   "vilnia_vilnius_scaler_X.pkl",
+            "scaler_y":   "vilnia_vilnius_scaler_y.pkl",
+            "config":     "vilnia_vilnius_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "vilnia_vilnius_anfis_model_3d.pth",
+            "scaler_x":   "vilnia_vilnius_scaler_X_3d.pkl",
+            "scaler_y":   "vilnia_vilnius_scaler_y_3d.pkl",
+            "config":     "vilnia_vilnius_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "vilnia_vilnius_anfis_model_5d.pth",
+            "scaler_x":   "vilnia_vilnius_scaler_X_5d.pkl",
+            "scaler_y":   "vilnia_vilnius_scaler_y_5d.pkl",
+            "config":     "vilnia_vilnius_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+
 
 
 
@@ -553,6 +602,7 @@ RIVER_CONFIGS = {
     "nemunas_nemajunai":  NEMUNAS_NEMAJUNAI_CONFIG,
     "nemunas_darsuniskis":  NEMUNAS_DARSUNISKIS_CONFIG,
     "nemunas_lampedziai":   NEMUNAS_LAMPEDZIAI_CONFIG,
+    "vilnia_vilnius":      VILNIA_VILNIUS_CONFIG,
 }
 
 # ---------------------------------------------------------------------------
@@ -925,8 +975,8 @@ scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),   tri
 scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG),  trigger="cron", minute="20")
 scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_NEMAJUNAI_CONFIG), trigger="cron", minute="20")
 scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_DARSUNISKIS_CONFIG), trigger="cron", minute="25")
-scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_LAMPEDZIAI_CONFIG), trigger="cron", minute="30")  # ← NEW
-# ← NEW
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_LAMPEDZIAI_CONFIG), trigger="cron", minute="30")
+scheduler.add_job(func=lambda: run_prediction_job(VILNIA_VILNIUS_CONFIG), trigger="cron", minute="35")
 scheduler.start()
 
 
@@ -956,7 +1006,8 @@ def run_startup_jobs():
             MARIOS_BIRSTONAS_CONFIG,
             NEMUNAS_NEMAJUNAI_CONFIG,
             NEMUNAS_DARSUNISKIS_CONFIG,
-            NEMUNAS_LAMPEDZIAI_CONFIG,# ← was duplicating MARIOS before
+            NEMUNAS_LAMPEDZIAI_CONFIG,
+            VILNIA_VILNIUS_CONFIG,
         ]
 
         threads = [

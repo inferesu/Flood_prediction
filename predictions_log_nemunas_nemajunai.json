@@ -27,5 +27,63 @@
                 "label": "5-Day Forecast"
             }
         }
+    },
+    "2026-04-11": {
+        "actual": 61.4,
+        "features": {
+            "Water Level": "61.4 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality": "-0.167",
+            "Trend": "1.9 cm"
+        },
+        "fired_rule": "Rule #252 (Act: 1.00): IF API_norm is Low AND S_t is Late Jan AND SMI_t is Extreme AND Pt is High AND delta_WL_t is Medium",
+        "horizons": {
+            "1d": {
+                "level": 61.37,
+                "change": -0.03,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 58.24,
+                "change": -3.16,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 39.9,
+                "change": -21.5,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-04-12": {
+        "actual": 58.5,
+        "features": {
+            "Water Level": "58.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "1.92 mm",
+            "Seasonality": "-0.184",
+            "Trend": "-2.6 cm"
+        },
+        "fired_rule": "Rule #252 (Act: 1.00): IF API_norm is Low AND S_t is Late Jan AND SMI_t is Extreme AND Pt is High AND delta_WL_t is Medium",
+        "horizons": {
+            "1d": {
+                "level": 56.59,
+                "change": -1.91,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 52.81,
+                "change": -5.69,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 35.03,
+                "change": -23.47,
+                "label": "5-Day Forecast"
+            }
+        }
     }
 }
