@@ -121,6 +121,14 @@ INFRASTRUCTURE_DATA = {
         {"name": "Vilnius Fire Station", "type": "shelter", "lat": 54.6850, "lon": 25.2780},
         {"name": "Vilnius Power Station", "type": "power", "lat": 54.6840, "lon": 25.2760},
     ],
+    "neris_vilnius": [
+        {"name": "Vilnius University Hospital", "type": "hospital", "lat": 54.6872, "lon": 25.2797},
+        {"name": "Vilnius City Shelter", "type": "shelter", "lat": 54.6890, "lon": 25.2750},
+        {"name": "Neris Bridge (Vilnius)", "type": "bridge", "lat": 54.6880, "lon": 25.2780},
+        {"name": "Vilnius Primary School", "type": "school", "lat": 54.6900, "lon": 25.2820},
+        {"name": "Vilnius Fire Station", "type": "shelter", "lat": 54.6850, "lon": 25.2760},
+        {"name": "Vilnius Power Station", "type": "power", "lat": 54.6840, "lon": 25.2740},
+    ],
 
 }
 
@@ -161,6 +169,9 @@ MONITORING_STATIONS = {
     ],
     "vilnia_vilnius": [
         {"code": "vilniaus-vilnia-vms", "name": "Vilnius (Vilnia)", "lat": 54.679215, "lon": 25.294857, "is_main": True},
+    ],
+    "neris_vilnius": [
+        {"code": "vilniaus-neris-vms", "name": "Vilnius (Neris)", "lat": 54.6872, "lon": 25.2797, "is_main": True},
     ],
 
 }
@@ -585,6 +596,44 @@ VILNIA_VILNIUS_CONFIG = {
         },
     },
 }
+NERIS_VILNIUS_CONFIG = {
+    "name": "neris_vilnius",
+    "display_name": "Neris (Vilnius)",
+    "data_file": "live_data_neris_vilnius.csv",
+    "predictions_log_path": "predictions_log_neris_vilnius.json",
+    "hydro_station": "vilniaus-neris-vms",
+    "lat": 54.6872,
+    "lon": 25.2797,
+    "meteo_stations": ["vilniaus-ams"],
+    "risk_levels": [150, 280, 400],
+    "horizons": {
+        "1d": {
+            "model":      "neris_vilnius_anfis_model.pth",
+            "scaler_x":   "neris_vilnius_scaler_X.pkl",
+            "scaler_y":   "neris_vilnius_scaler_y.pkl",
+            "config":     "neris_vilnius_training_config.json",
+            "label":      "1-Day Forecast",
+            "days_ahead": 1,
+        },
+        "3d": {
+            "model":      "neris_vilnius_anfis_model_3d.pth",
+            "scaler_x":   "neris_vilnius_scaler_X_3d.pkl",
+            "scaler_y":   "neris_vilnius_scaler_y_3d.pkl",
+            "config":     "neris_vilnius_training_config_3d.json",
+            "label":      "3-Day Forecast",
+            "days_ahead": 3,
+        },
+        "5d": {
+            "model":      "neris_vilnius_anfis_model_5d.pth",
+            "scaler_x":   "neris_vilnius_scaler_X_5d.pkl",
+            "scaler_y":   "neris_vilnius_scaler_y_5d.pkl",
+            "config":     "neris_vilnius_training_config_5d.json",
+            "label":      "5-Day Forecast",
+            "days_ahead": 5,
+        },
+    },
+}
+
 
 
 
@@ -603,6 +652,7 @@ RIVER_CONFIGS = {
     "nemunas_darsuniskis":  NEMUNAS_DARSUNISKIS_CONFIG,
     "nemunas_lampedziai":   NEMUNAS_LAMPEDZIAI_CONFIG,
     "vilnia_vilnius":      VILNIA_VILNIUS_CONFIG,
+    "neris_vilnius":       NERIS_VILNIUS_CONFIG,
 }
 
 # ---------------------------------------------------------------------------
@@ -968,15 +1018,16 @@ def get_data_api():
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=lambda: run_prediction_job(MINIJA_CONFIG),            trigger="cron", minute="05")
 scheduler.add_job(func=lambda: run_prediction_job(DANE_CONFIG),              trigger="cron", minute="05")
-scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),           trigger="cron", minute="10")
-scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),     trigger="cron", minute="10")
-scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG),  trigger="cron", minute="15")
-scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),   trigger="cron", minute="15")
-scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG),  trigger="cron", minute="20")
-scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_NEMAJUNAI_CONFIG), trigger="cron", minute="20")
-scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_DARSUNISKIS_CONFIG), trigger="cron", minute="25")
-scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_LAMPEDZIAI_CONFIG), trigger="cron", minute="30")
-scheduler.add_job(func=lambda: run_prediction_job(VILNIA_VILNIUS_CONFIG), trigger="cron", minute="35")
+scheduler.add_job(func=lambda: run_prediction_job(KARTENA_CONFIG),           trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(DANE_KRETINGA_CONFIG),     trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(KANALAS_LANKUPIU_CONFIG),  trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(LANKUPIU_MINIJA_CONFIG),   trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(MARIOS_BIRSTONAS_CONFIG),  trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_NEMAJUNAI_CONFIG), trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_DARSUNISKIS_CONFIG), trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(NEMUNAS_LAMPEDZIAI_CONFIG), trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(VILNIA_VILNIUS_CONFIG), trigger="cron", minute="05")
+scheduler.add_job(func=lambda: run_prediction_job(NERIS_VILNIUS_CONFIG), trigger="cron", minute="05")  # ← NEW
 scheduler.start()
 
 
@@ -1008,6 +1059,7 @@ def run_startup_jobs():
             NEMUNAS_DARSUNISKIS_CONFIG,
             NEMUNAS_LAMPEDZIAI_CONFIG,
             VILNIA_VILNIUS_CONFIG,
+            NERIS_VILNIUS_CONFIG,
         ]
 
         threads = [
