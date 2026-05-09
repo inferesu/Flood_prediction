@@ -725,9 +725,9 @@
         }
     },
     "2026-05-07": {
-        "actual": 493.6,
+        "actual": 491.5,
         "features": {
-            "Water Level": "493.6 cm",
+            "Water Level": "491.5 cm",
             "Precipitation (Pt)": "0.1 mm",
             "Soil Saturation (API)": "0.93 idx",
             "Snowmelt (SMI)": "14.62 mm",
@@ -737,18 +737,47 @@
         "fired_rule": "Rule #652 (Act: 1.00): IF API_norm is Medium AND S_t is Late Winter AND SMI_t is Very High AND Pt is High AND delta_WL_t is Medium",
         "horizons": {
             "1d": {
-                "level": 493.27,
+                "level": 491.17,
                 "change": -0.33,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": 493.68,
+                "level": 491.58,
                 "change": 0.08,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": 494.95,
+                "level": 492.85,
                 "change": 1.35,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-05-08": {
+        "actual": 487.3,
+        "features": {
+            "Water Level": "487.3 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.79 idx",
+            "Snowmelt (SMI)": "17.05 mm",
+            "Seasonality": "-0.591",
+            "Trend": "5.4 cm"
+        },
+        "fired_rule": "Rule #652 (Act: 1.00): IF API_norm is Medium AND S_t is Late Winter AND SMI_t is Very High AND Pt is High AND delta_WL_t is Medium",
+        "horizons": {
+            "1d": {
+                "level": 487.35,
+                "change": 0.05,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 485.65,
+                "change": -1.65,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 485.29,
+                "change": -2.01,
                 "label": "5-Day Forecast"
             }
         }

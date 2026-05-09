@@ -725,9 +725,9 @@
         }
     },
     "2026-05-07": {
-        "actual": 486.3,
+        "actual": 488.6,
         "features": {
-            "Water Level": "486.3 cm",
+            "Water Level": "488.6 cm",
             "Precipitation (Pt)": "1.0 mm",
             "Soil Saturation (API)": "3.48 idx",
             "Snowmelt (SMI)": "15.42 mm",
@@ -737,18 +737,47 @@
         "fired_rule": "Rule #1277 (Act: 1.00): IF API_norm is Extreme AND S_t is Late Winter AND SMI_t is Very High AND Pt is High AND delta_WL_t is Medium",
         "horizons": {
             "1d": {
-                "level": 484.55,
+                "level": 486.85,
                 "change": -1.75,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": 486.54,
+                "level": 488.84,
                 "change": 0.24,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": 485.58,
+                "level": 487.88,
                 "change": -0.72,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-05-08": {
+        "actual": 478.3,
+        "features": {
+            "Water Level": "478.3 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "2.96 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality": "-0.591",
+            "Trend": "4.9 cm"
+        },
+        "fired_rule": "Rule #1252 (Act: 1.00): IF API_norm is Extreme AND S_t is Late Winter AND SMI_t is Extreme AND Pt is High AND delta_WL_t is Medium",
+        "horizons": {
+            "1d": {
+                "level": 477.59,
+                "change": -0.71,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": 476.0,
+                "change": -2.3,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": 466.38,
+                "change": -11.92,
                 "label": "5-Day Forecast"
             }
         }

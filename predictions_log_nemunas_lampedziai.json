@@ -725,9 +725,9 @@
         }
     },
     "2026-05-07": {
-        "actual": -80.9,
+        "actual": -108.4,
         "features": {
-            "Water Level": "-80.9 cm",
+            "Water Level": "-108.4 cm",
             "Precipitation (Pt)": "0.1 mm",
             "Soil Saturation (API)": "0.93 idx",
             "Snowmelt (SMI)": "14.62 mm",
@@ -737,18 +737,47 @@
         "fired_rule": "Rule #777 (Act: 1.00): IF API_norm is Medium AND S_t is Mid Spring AND SMI_t is Very High AND Pt is High AND delta_WL_t is Medium",
         "horizons": {
             "1d": {
-                "level": -81.73,
+                "level": -109.23,
                 "change": -0.83,
                 "label": "1-Day Forecast"
             },
             "3d": {
-                "level": -85.95,
+                "level": -113.45,
                 "change": -5.05,
                 "label": "3-Day Forecast"
             },
             "5d": {
-                "level": -88.58,
+                "level": -116.08,
                 "change": -7.68,
+                "label": "5-Day Forecast"
+            }
+        }
+    },
+    "2026-05-08": {
+        "actual": -106.2,
+        "features": {
+            "Water Level": "-106.2 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.79 idx",
+            "Snowmelt (SMI)": "17.05 mm",
+            "Seasonality": "-0.591",
+            "Trend": "32.1 cm"
+        },
+        "fired_rule": "Rule #153 (Act: 1.00): IF API_norm is Low AND S_t is Mid Spring AND SMI_t is Very High AND Pt is High AND delta_WL_t is Extreme",
+        "horizons": {
+            "1d": {
+                "level": -103.18,
+                "change": 3.02,
+                "label": "1-Day Forecast"
+            },
+            "3d": {
+                "level": -115.3,
+                "change": -9.1,
+                "label": "3-Day Forecast"
+            },
+            "5d": {
+                "level": -123.54,
+                "change": -17.34,
                 "label": "5-Day Forecast"
             }
         }
