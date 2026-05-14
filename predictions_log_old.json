@@ -1,0 +1,276 @@
+{
+    "2026-02-21": {
+        "actual": 172.5,
+        "features": {
+            "Water Level": "172.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.625",
+            "Trend (Delta WL)": "2.9 cm"
+        }
+    },
+    "2026-02-22": {
+        "predicted": 171.85,
+        "report": "Forecast: 171.85 cm (Change: -0.65 cm)",
+        "actual": 176.9,
+        "features": {
+            "Water Level": "176.9 cm",
+            "Precipitation (Pt)": "0.75 mm",
+            "Soil Saturation (API)": "0.75 idx",
+            "Snowmelt (SMI)": "0.61 mm",
+            "Seasonality Factor": "0.612",
+            "Trend (Delta WL)": "7.3 cm"
+        }
+    },
+    "2026-02-23": {
+        "predicted": 166.29,
+        "report": "Forecast: 166.29 cm (Change: -10.61 cm)",
+        "actual": 181.5,
+        "features": {
+            "Water Level": "181.5 cm",
+            "Precipitation (Pt)": "3.15 mm",
+            "Soil Saturation (API)": "3.15 idx",
+            "Snowmelt (SMI)": "0.99 mm",
+            "Seasonality Factor": "0.598",
+            "Trend (Delta WL)": "11.9 cm"
+        }
+    },
+    "2026-02-24": {
+        "predicted": 184.66,
+        "report": "Forecast: 184.66 cm (Change: +3.16 cm)",
+        "actual": 186.9,
+        "features": {
+            "Water Level": "186.9 cm",
+            "Precipitation (Pt)": "0.15 mm",
+            "Soil Saturation (API)": "0.15 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.584",
+            "Trend (Delta WL)": "17.3 cm"
+        }
+    },
+    "2026-02-25": {
+        "predicted": 175.36,
+        "report": "Forecast: 175.36 cm (Change: -11.54 cm)",
+        "actual": 188.8,
+        "features": {
+            "Water Level": "188.8 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.57",
+            "Trend (Delta WL)": "19.2 cm"
+        }
+    },
+    "2026-02-26": {
+        "predicted": 200.04,
+        "report": "Forecast: 200.04 cm (Change: +11.24 cm)",
+        "actual": 189.7,
+        "features": {
+            "Water Level": "189.7 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0 mm",
+            "Seasonality Factor": "0.556",
+            "Trend (Delta WL)": "20.1 cm"
+        }
+    },
+    "2026-02-27": {
+        "predicted": 201.35,
+        "report": "Forecast: 201.35 cm (Change: +11.65 cm)",
+        "actual": 190.6,
+        "features": {
+            "Water Level": "190.6 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "7.68 mm",
+            "Seasonality Factor": "0.542",
+            "Trend (Delta WL)": "21.0 cm"
+        }
+    },
+    "2026-02-28": {
+        "predicted": 205.73,
+        "report": "Forecast: 205.73 cm (Change: +15.13 cm)",
+        "actual": 195.5,
+        "features": {
+            "Water Level": "195.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "11.72 mm",
+            "Seasonality Factor": "0.527",
+            "Trend (Delta WL)": "25.9 cm"
+        }
+    },
+    "2026-03-01": {
+        "predicted": 216.29,
+        "report": "Forecast: 216.29 cm (Change: +20.79 cm)",
+        "actual": 208.1,
+        "features": {
+            "Water Level": "208.1 cm",
+            "Precipitation (Pt)": "0.1 mm",
+            "Soil Saturation (API)": "0.1 idx",
+            "Snowmelt (SMI)": "5.32 mm",
+            "Seasonality Factor": "0.512",
+            "Trend (Delta WL)": "38.5 cm"
+        },
+        "fired_rule": "Rule #1556 | Activation: 0.2558 | IF API_norm is Extreme AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High"
+    },
+    "2026-03-02": {
+        "predicted": 205.09,
+        "report": "Forecast: 205.09 cm (Change: -3.01 cm)",
+        "actual": 237.6,
+        "features": {
+            "Water Level": "237.6 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "3.7 mm",
+            "Seasonality Factor": "0.498",
+            "Trend (Delta WL)": "68.0 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2926 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-03": {
+        "predicted": 279.12,
+        "report": "Forecast: 279.12 cm (Change: +41.52 cm)",
+        "actual": 269.9,
+        "features": {
+            "Water Level": "269.9 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality Factor": "0.483",
+            "Trend (Delta WL)": "32.3 cm"
+        },
+        "fired_rule": "Rule #306 | Activation: 0.2271 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is High"
+    },
+    "2026-03-04": {
+        "predicted": 288.1,
+        "report": "Forecast: 288.10 cm (Change: +18.20 cm)",
+        "actual": 296.3,
+        "features": {
+            "Water Level": "296.3 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "3.95 mm",
+            "Seasonality Factor": "0.467",
+            "Trend (Delta WL)": "58.7 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2868 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-05": {
+        "predicted": 332.12,
+        "report": "Forecast: 332.12 cm (Change: +35.82 cm)",
+        "actual": 306.5,
+        "features": {
+            "Water Level": "306.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "4.99 mm",
+            "Seasonality Factor": "0.452",
+            "Trend (Delta WL)": "68.9 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.3081 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-06": {
+        "predicted": 348.51,
+        "report": "Forecast: 348.51 cm (Change: +42.01 cm)",
+        "actual": 324.5,
+        "features": {
+            "Water Level": "324.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality Factor": "0.437",
+            "Trend (Delta WL)": "86.9 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2490 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-07": {
+        "predicted": 369.54,
+        "report": "Forecast: 369.54 cm (Change: +45.04 cm)",
+        "actual": 331.3,
+        "features": {
+            "Water Level": "331.3 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "0.0 mm",
+            "Seasonality Factor": "0.421",
+            "Trend (Delta WL)": "93.7 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2190 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-08": {
+        "predicted": 381.13,
+        "report": "Forecast: 381.13 cm (Change: +49.83 cm)",
+        "actual": 324.5,
+        "features": {
+            "Water Level": "324.5 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "7.88 mm",
+            "Seasonality Factor": "0.405",
+            "Trend (Delta WL)": "86.9 cm"
+        },
+        "fired_rule": "Rule #308 | Activation: 0.2804 | IF API_norm is Low AND S_t is Late January / December AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-09": {
+        "predicted": 377.34,
+        "report": "Forecast: 377.34 cm (Change: +52.84 cm)",
+        "actual": 316.1,
+        "features": {
+            "Water Level": "316.1 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "5.64 mm",
+            "Seasonality Factor": "0.39",
+            "Trend (Delta WL)": "78.5 cm"
+        },
+        "fired_rule": "Rule #58 | Activation: 0.2856 | IF API_norm is Low AND S_t is Late Winter / November AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-10": {
+        "predicted": 362.36,
+        "report": "Forecast: 362.36 cm (Change: +46.26 cm)",
+        "actual": 317.9,
+        "features": {
+            "Water Level": "317.9 cm",
+            "Precipitation (Pt)": "0.0 mm",
+            "Soil Saturation (API)": "0.0 idx",
+            "Snowmelt (SMI)": "11.99 mm",
+            "Seasonality Factor": "0.374",
+            "Trend (Delta WL)": "80.3 cm"
+        },
+        "fired_rule": "Rule #58 | Activation: 0.3286 | IF API_norm is Low AND S_t is Late Winter / November AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-11": {
+        "predicted": 370.94,
+        "report": "Forecast: 370.94 cm (Change: +53.04 cm)",
+        "actual": 346.5,
+        "features": {
+            "Water Level": "346.5 cm",
+            "Precipitation (Pt)": "0.1 mm",
+            "Soil Saturation (API)": "0.1 idx",
+            "Snowmelt (SMI)": "13.34 mm",
+            "Seasonality Factor": "0.358",
+            "Trend (Delta WL)": "108.9 cm"
+        },
+        "fired_rule": "Rule #1308 | Activation: 0.2519 | IF API_norm is Extreme AND S_t is Late Winter / November AND SMI_t is Medium AND Pt is Medium AND delta_WL_t is Extreme"
+    },
+    "2026-03-12": {
+        "predicted": 373.0,
+        "report": "Forecast: 373.00 cm (Change: +26.50 cm)",
+        "actual": 367,
+        "features": {
+            "Water Level": "367 cm",
+            "Precipitation (Pt)": "0.45 mm",
+            "Soil Saturation (API)": "0.45 idx",
+            "Snowmelt (SMI)": "15.08 mm",
+            "Seasonality Factor": "0.342",
+            "Trend (Delta WL)": "129.4 cm"
+        },
+        "fired_rule": "Rule #1330 | Activation: 0.2306 | IF API_norm is Extreme AND S_t is Late Winter / November AND SMI_t is Low AND Pt is Medium AND delta_WL_t is Very High"
+    },
+    "2026-03-13": {
+        "predicted": 408.51,
+        "report": "Forecast: 408.51 cm (Change: +41.51 cm)"
+    }
+}

@@ -2,203 +2,548 @@ import json
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import joblib
-from sklearn.metrics import r2_score, mean_absolute_error
-from collections import deque
-
-# --- Import ANFIS and RNN classes to be able to load the models ---
+import time
+import psutil
+import os
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
+import scipy.stats
 
-# --- File Paths ---
+# ---------------- PATHS ----------------
 ANFIS_MODEL_PATH = "anfis_model.pth"
-RNN_MODEL_PATH = "rnn_corrector_multivariate.pth"
 SCALER_X_PATH = "scaler_X.pkl"
-SCALER_Y_PATH = "scaler_Y.pkl"
-SCALER_ERROR_PATH = "scaler_error.pkl"
+SCALER_Y_PATH = "scaler_y.pkl"
 CONFIG_JSON_PATH = "training_config.json"
-TEST_DATA_FILE = 'live_data.csv'
+TEST_DATA_FILE = "minija_complex_data_test.csv"
 
-# --- RNN Configuration ---
-SEQUENCE_LENGTH = 24
-HIDDEN_SIZE = 60
-NUM_LAYERS = 2
+# ---------------- CONSTANTS & RESOURCE TRACKING ----------------
+K_DECAY = 0.85
+T_MELT = 0.0
 
-# --- Prediction Control ---
-# REMOVED: The fixed dampening factor is no longer needed.
-# CORRECTION_DAMPENING_FACTOR = 0.5
-MAX_CORRECTION_ABS = 25.0
+# Apple M1 Max estimated CPU power
+CPU_POWER_W = 30
 
-# --- Adaptive Correction Control ---
-ADAPTIVE_ERROR_THRESHOLD = 15.0
-ERROR_MONITORING_WINDOW = 12
+process = psutil.Process(os.getpid())
 
 
-# --- Model and Feature Definitions (Must be identical to training scripts) ---
+def get_memory_mb():
+    return process.memory_info().rss / (1024 * 1024)
 
-def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
-    """A copy of the feature prep function from the ANFIS training script."""
+
+# ---------------- FEATURE ENGINEERING ----------------
+def prepare_features(df):
     df = df.copy()
-    df.sort_index(inplace=True)
-    df.interpolate(method='time', inplace=True)
-    df['precip_klaipedos_lag_12h'] = df['precip_klaipedos-ams_mm'].rolling(12, min_periods=1).sum()
-    df['precip_klaipedos_lag_24h'] = df['precip_klaipedos-ams_mm'].rolling(24, min_periods=1).sum()
-    df['precip_klaipedos_lag_48h'] = df['precip_klaipedos-ams_mm'].rolling(48, min_periods=1).sum()
-    df['precip_klaipedos_lag_72h'] = df['precip_klaipedos-ams_mm'].rolling(72, min_periods=1).sum()
-    df['precip_vezaiciu_lag_12h'] = df['precip_vezaiciu-ams_mm'].rolling(12, min_periods=1).sum()
-    df['precip_vezaiciu_lag_24h'] = df['precip_vezaiciu-ams_mm'].rolling(24, min_periods=1).sum()
-    df['precip_vezaiciu_lag_48h'] = df['precip_vezaiciu-ams_mm'].rolling(48, min_periods=1).sum()
-    df['precip_vezaiciu_lag_72h'] = df['precip_vezaiciu-ams_mm'].rolling(72, min_periods=1).sum()
-    df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
-    df.dropna(inplace=True)
-    return df
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp")
+
+    # Mean precipitation
+    df["Pt"] = df[["precip_klaipedos-ams", "precip_vezaiciu-ams"]].mean(axis=1)
+
+    # API
+    api_vals = []
+    val = 0.0
+    for p in df["Pt"]:
+        val = p + K_DECAY * val
+        api_vals.append(val)
+    df["API_norm"] = (api_vals - np.min(api_vals)) / (np.max(api_vals) - np.min(api_vals))
+
+    # Seasonality
+    doy = df["timestamp"].dt.dayofyear
+    df["S_t"] = np.cos((2 * np.pi * doy) / 365.0)
+
+    # Snowmelt Index
+    T = df[["temp_klaipedos-ams", "temp_vezaiciu-ams"]].mean(axis=1)
+    df["SMI_t"] = np.maximum(0, T - T_MELT)
+
+    # Trend persistence
+    df["delta_WL_t"] = df["water_level_cm"].diff().fillna(0)
+
+    # Target
+    df["target_change"] = df["water_level_cm"].shift(-1) - df["water_level_cm"]
+
+    return df.dropna().reset_index(drop=True)
 
 
-def build_anfis(num_inputs: int, num_mfs: int) -> AnfisNet:
-    """Reconstructs the ANFIS model structure."""
+# ---------------- BUILD ANFIS ----------------
+def build_anfis(n_inputs, n_mfs):
     invardefs = []
-    for i in range(num_inputs):
-        mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]
-        invardefs.append((f'x{i}', mfs))
-    return AnfisNet('Flood Prediction Model', invardefs, ['y'], hybrid=True)
+    for i in range(n_inputs):
+        mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1))
+               for _ in range(n_mfs)]
+        invardefs.append((f"x{i}", mfs))
+    return AnfisNet("Flood Model", invardefs, ["y"], hybrid=True)
 
 
-class ErrorCorrectorRNN(nn.Module):
-    """Reconstructs the new multivariate RNN model structure."""
-
-    def __init__(self, input_size, hidden_size=50, num_layers=2, output_size=1):
-        super(ErrorCorrectorRNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
-        self.fc = nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
-        return out
-
-
-def evaluate_hybrid_model_adaptive():
-    """Main function to run the adaptive two-stage ANFIS+RNN evaluation."""
-    print("--- Step 1: Loading All Models and Artifacts ---")
-
-    with open(CONFIG_JSON_PATH, "r") as f:
+# ---------------- EVALUATION ----------------
+def evaluate():
+    # Load config
+    with open(CONFIG_JSON_PATH) as f:
         config = json.load(f)
-    features_list = config["features_list"]
-    num_features = len(features_list)
 
+    features = config["features_list"]
+    num_inputs = config["num_inputs"]
+    num_mfs = config["num_mfs"]
+    target = config["target"]
+
+    # Load scalers
     scaler_X = joblib.load(SCALER_X_PATH)
     scaler_y = joblib.load(SCALER_Y_PATH)
-    anfis_model = build_anfis(config["num_inputs"], config["num_mfs"])
-    checkpoint = torch.load(ANFIS_MODEL_PATH, map_location="cpu")
-    anfis_model.load_state_dict(checkpoint['model_state_dict'])
-    anfis_model.coeff = checkpoint['consequent_coeffs']
-    anfis_model.eval()
-    print("✅ ANFIS model and scalers loaded.")
 
-    scaler_error = joblib.load(SCALER_ERROR_PATH)
-    input_size = 1 + num_features
-    rnn_model = ErrorCorrectorRNN(input_size=input_size, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS)
-    rnn_model.load_state_dict(torch.load(RNN_MODEL_PATH, map_location="cpu"))
-    rnn_model.eval()
-    print("✅ Multivariate RNN corrector model and scaler loaded.")
+    # Load ANFIS
+    model = build_anfis(num_inputs, num_mfs)
+    ckpt = torch.load(ANFIS_MODEL_PATH, map_location="cpu")
+    model.load_state_dict(ckpt["model_state_dict"])
+    model.coeff = ckpt["coeff"]
+    model.eval()
 
-    print("\n--- Step 2: Preparing Test Data ---")
-    df_test = pd.read_csv(TEST_DATA_FILE, parse_dates=['timestamp'], index_col='timestamp')
-    df_test = prepare_features(df_test)
-    X_test_unscaled = df_test[features_list].values
-    y_true_change = df_test[config["target"]].values
+    # Load and prepare data
+    df = prepare_features(pd.read_csv(TEST_DATA_FILE))
+    X = df[features].values
+    y_true = df[target].values
 
-    X_test_scaled = scaler_X.transform(X_test_unscaled)
-    X_test_tensor = torch.from_numpy(X_test_scaled).float()
+    # Scale inputs
+    Xs = scaler_X.transform(X)
 
-    print("\n--- Step 3: Performing Adaptive Hybrid Prediction Loop ---")
-    final_predictions = []
-    applied_corrections = []
-    context_history = deque([np.zeros(1 + num_features)] * SEQUENCE_LENGTH, maxlen=SEQUENCE_LENGTH)
-    anfis_error_history = deque([0.0] * ERROR_MONITORING_WINDOW, maxlen=ERROR_MONITORING_WINDOW)
+    # ================= INFERENCE & RESOURCE TRACKING =================
+    print("\n--- Running Inference ---")
+
+    mem_before = get_memory_mb()
+    start_pred = time.time()
+
+    preds_scaled = model(torch.tensor(Xs).float()).detach().numpy()
+
+    pred_time = time.time() - start_pred
+    mem_after = get_memory_mb()
+
+    energy_inference = CPU_POWER_W * pred_time
+
+    print("\n--- Inference Resources ---")
+    print(f"Inference Time: {pred_time:.6f} sec")
+    print(f"Time per Sample: {(pred_time / len(Xs)) * 1000:.6f} ms")
+    print(f"Memory Usage: {mem_after - mem_before:.2f} MB")
+    print(f"Estimated Energy: {energy_inference:.4f} Joules")
+    # =================================================================
+
+    preds = scaler_y.inverse_transform(preds_scaled).flatten()
+
+    # Convert to water level
+    wl = df["water_level_cm"].values
+    wl_pred = wl + preds
+    wl_true = wl + y_true
+
+    # --------- METRICS ----------
+    mse = mean_squared_error(wl_true, wl_pred)
+    rmse = np.sqrt(mse)
+    nrmse = rmse / (wl_true.max() - wl_true.min())
+    mae = mean_absolute_error(wl_true, wl_pred)
+    r2 = r2_score(wl_true, wl_pred)
+
+    print("\n--- ANFIS Flood Model Performance ---")
+    print(f"MSE   : {mse:.3f}")
+    print(f"RMSE  : {rmse:.3f} cm")
+    print(f"NRMSE : {nrmse:.4f}")
+    print(f"MAE   : {mae:.3f} cm")
+    print(f"R²    : {r2:.4f}")
+
+    # ---- NEW: DIEBOLD-MARIANO TEST BLOCK ----
+    COMPETITOR_FILE = "rnn_predictions.csv"
+    try:
+        print("\n--- Statistical Significance (Diebold-Mariano Test) ---")
+        comp_df = pd.read_csv(COMPETITOR_FILE)
+
+        # Convert timestamps to datetime for perfect alignment
+        comp_df['timestamp'] = pd.to_datetime(comp_df['timestamp'])
+
+        # Create a temporary dataframe for ANFIS results
+        anfis_temp_df = pd.DataFrame({
+            'timestamp': df['timestamp'],
+            'wl_true_anfis': wl_true,
+            'wl_pred_anfis': wl_pred
+        })
+
+        # Merge them together based on the exact same days
+        aligned_df = pd.merge(anfis_temp_df, comp_df, on='timestamp', how='inner')
+
+        actual_aligned = aligned_df['wl_true_anfis'].values
+        anfis_aligned = aligned_df['wl_pred_anfis'].values
+        comp_aligned = aligned_df['WL_pred'].values
+
+        # Test MSE differences on the perfectly aligned arrays
+        dm_stat_mse, p_val_mse = diebold_mariano_test(actual_aligned, anfis_aligned, comp_aligned, loss='mse')
+
+        print(f"Aligned test samples : {len(actual_aligned)} (truncated to match competitor look-back)")
+        print(f"DM Statistic (MSE)   : {dm_stat_mse:.4f}")
+        print(f"P-value (MSE)        : {p_val_mse:.4f}")
+
+        if p_val_mse > 0.05:
+            print(
+                "Result: The difference in MSE between ANFIS and the competitor is NOT statistically significant (p > 0.05).")
+        else:
+            print("Result: The difference in MSE IS statistically significant (p <= 0.05).")
+
+    except FileNotFoundError:
+        print(f"Note: '{COMPETITOR_FILE}' not found. Skipping DM test.")
+
+    # ---- MODEL INTERPRETATION SECTION ----
+    extract_membership_functions(model, features)
+    print_sample_rules(model, features, num_mfs, n_show=5)
+    rank_rules_by_activation(model, Xs, num_mfs, features, top_k=10)
+    save_rules_to_csv(model, features, num_mfs)
+    rank_least_activated_rules(model, Xs, num_mfs, features, bottom_k=10)
+    rule_activation_statistics(model, Xs)
+    rank_rules_by_activation(model, Xs, num_mfs, features, top_k=10)
+    flood_event_rule_analysis(model, Xs, wl_true,
+                              num_mfs, features,
+                              threshold_percentile=90,
+                              top_k=5)
+    check_membership_spread(model)
+    feature_importance_via_coefficients(model, Xs, features)
+    membership_overlap_index(model)
+    rule_usage_entropy(model, Xs)
+
+    # Save results
+    out = pd.DataFrame({
+        "timestamp": df["timestamp"],
+        "WL_true": wl_true,
+        "WL_pred": wl_pred,
+        "WL_error": wl_true - wl_pred
+    })
+
+    out.to_csv("anfis_predictions.csv", index=False)
+    print("\nSaved to anfis_predictions.csv")
+    print(out.head())
+
+
+def decode_rule_index(rule_index, num_mfs, num_inputs):
+    indices = []
+    for _ in range(num_inputs):
+        indices.append(rule_index % num_mfs)
+        rule_index //= num_mfs
+    return list(reversed(indices))
+
+
+def extract_membership_functions(model, feature_names):
+    print("\n=== MEMBERSHIP FUNCTIONS ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs  # OrderedDict
+
+    for i, (var_name, var_obj) in enumerate(variables.items()):
+        print(f"\nInput: {feature_names[i]}")
+
+        for j, mf in enumerate(var_obj.mfdefs.values()):
+            print(f"  MF_{j}: "
+                  f"a={mf.a.item():.4f}, "
+                  f"b={mf.b.item():.4f}, "
+                  f"c={mf.c.item():.4f}")
+
+
+def print_sample_rules(model, feature_names, num_mfs, n_show=5):
+    print("\n=== SAMPLE FUZZY RULES ===")
+
+    coeffs = model.coeff.detach().numpy()
+    n_inputs = len(feature_names)
+    n_rules = coeffs.shape[0]
+
+    for r in range(min(n_show, n_rules)):
+        mf_indices = decode_rule_index(r, num_mfs, n_inputs)
+
+        print(f"\nRule {r}:")
+        print("IF")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+        print("THEN")
+
+        # --- CASE 1: Zero-order Sugeno ---
+        if coeffs.ndim == 2 and coeffs.shape[1] == 1:
+            bias = coeffs[r, 0]
+            print(f"   y = {bias:.4f}")
+
+        # --- CASE 2: First-order Sugeno ---
+        elif coeffs.ndim == 2:
+            terms = []
+            for i, feature in enumerate(feature_names):
+                coef_value = coeffs[r, i]
+                terms.append(f"{coef_value:.3f}*{feature}")
+
+            bias = coeffs[r, -1]
+            print("   y = " + " + ".join(terms) + f" + {bias:.3f}")
+
+        else:
+            print("Unexpected coefficient shape:", coeffs.shape)
+
+
+def rank_rules_by_activation(model, X_scaled, num_mfs, feature_names, top_k=10):
+    print("\n=== MOST ACTIVATED RULES ===")
 
     with torch.no_grad():
-        anfis_preds = scaler_y.inverse_transform(anfis_model(X_test_tensor).numpy()).flatten()
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
 
-        for i in range(len(df_test)):
-            anfis_prediction = anfis_preds[i]
-            recent_anfis_mae = np.mean(np.abs(list(anfis_error_history)))
-            final_correction = 0.0
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    top_indices = np.argsort(avg_activation)[-top_k:][::-1]
 
-            if recent_anfis_mae > ADAPTIVE_ERROR_THRESHOLD:
-                context_np = np.array(context_history)
-                context_to_scale = context_np.copy()
-                context_to_scale[:, 0] = scaler_error.transform(context_to_scale[:, 0].reshape(-1, 1)).flatten()
-                context_to_scale[:, 1:] = scaler_X.transform(context_to_scale[:, 1:])
-                context_tensor = torch.from_numpy(context_to_scale).float().unsqueeze(0)
+    n_inputs = len(feature_names)
 
-                correction_scaled = rnn_model(context_tensor).item()
-                predicted_correction = scaler_error.inverse_transform([[correction_scaled]])[0, 0]
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
 
-                # --- NEW: Adaptive Dampening Factor Logic ---
-                # Define the range of the dampening factor
-                min_damp = 0.3  # Be conservative when error is low
-                max_damp = 0.8  # Be more aggressive when error is high
-                # Define the error range over which to scale the factor
-                # Start at the threshold, and cap at a high but reasonable error value
-                error_scale_min = ADAPTIVE_ERROR_THRESHOLD
-                error_scale_max = 75.0  # A high error, e.g., 75cm
+        print(f"\nRank {rank + 1} — Rule {rule_id} "
+              f"(Avg activation={avg_activation[rule_id]:.6f})")
 
-                # Linearly scale the dampening factor based on the recent ANFIS error
-                if recent_anfis_mae <= error_scale_min:
-                    adaptive_dampening_factor = min_damp
-                elif recent_anfis_mae >= error_scale_max:
-                    adaptive_dampening_factor = max_damp
-                else:
-                    # Calculate the proportion of how far the error is into the scaling range
-                    error_proportion = (recent_anfis_mae - error_scale_min) / (error_scale_max - error_scale_min)
-                    adaptive_dampening_factor = min_damp + error_proportion * (max_damp - min_damp)
-
-                dampened_correction = predicted_correction * adaptive_dampening_factor
-                final_correction = np.clip(dampened_correction, -MAX_CORRECTION_ABS, MAX_CORRECTION_ABS)
-
-            applied_corrections.append(final_correction)
-
-            final_prediction = anfis_prediction + final_correction
-            final_predictions.append(final_prediction)
-
-            # Update histories
-            true_final_error = y_true_change[i] - final_prediction
-            current_features = X_test_unscaled[i]
-            new_context = np.concatenate([[true_final_error], current_features])
-            context_history.append(new_context)
-
-            true_anfis_error = y_true_change[i] - anfis_prediction
-            anfis_error_history.append(true_anfis_error)
-
-    print("✅ Adaptive hybrid prediction loop complete.")
-    final_predictions = np.array(final_predictions)
-
-    print("\n--- Step 4: Final Evaluation ---")
-    base_water_level = df_test['water_level_cm'].values
-    predicted_level = base_water_level + final_predictions
-    actual_level = base_water_level + y_true_change
-
-    r2 = r2_score(actual_level, predicted_level)
-    mae = mean_absolute_error(actual_level, predicted_level)
-    print(f"R-squared (R²) for Adaptive Hybrid Model: {r2:.4f}")
-    print(f"Mean Absolute Error (MAE) for Adaptive Hybrid Model: {mae:.2f} cm")
-
-    results_df = pd.DataFrame({
-        'Timestamp': df_test.index,
-        'Actual Water Level (cm)': actual_level,
-        'ANFIS Prediction (cm)': base_water_level + anfis_preds,
-        'Applied Correction (cm)': applied_corrections,
-        'Hybrid Final Prediction (cm)': predicted_level
-    })
-    print("\n--- Hybrid Predictions vs. Actuals ---")
-    print(results_df.to_string(index=False))
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
 
 
+def save_rules_to_csv(model, feature_names, num_mfs):
+    coeffs = model.coeff.detach().numpy()
+    n_rules = coeffs.shape[0]
+    n_inputs = len(feature_names)
+
+    rows = []
+
+    for r in range(n_rules):
+        mf_indices = decode_rule_index(r, num_mfs, n_inputs)
+        row = {"rule_id": r}
+
+        for i, feature in enumerate(feature_names):
+            row[f"{feature}_MF"] = mf_indices[i]
+
+        row["rule_output_constant"] = coeffs[r, 0]
+        rows.append(row)
+
+    pd.DataFrame(rows).to_csv("anfis_rule_base.csv", index=False)
+    print("\nFull rule base saved to anfis_rule_base.csv")
+
+
+def rank_least_activated_rules(model, X_scaled, num_mfs, feature_names, bottom_k=10):
+    print("\n=== LEAST ACTIVATED RULES ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    bottom_indices = np.argsort(avg_activation)[:bottom_k]
+
+    n_inputs = len(feature_names)
+
+    for rank, rule_id in enumerate(bottom_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"\nRank {rank + 1} — Rule {rule_id} "
+              f"(Avg activation={avg_activation[rule_id]:.8f})")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+
+def rule_activation_statistics(model, X_scaled):
+    print("\n=== RULE ACTIVATION STATISTICS ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+
+    print(f"Total rules: {len(avg_activation)}")
+    print(f"Max activation: {avg_activation.max():.6f}")
+    print(f"Mean activation: {avg_activation.mean():.6f}")
+    print(f"Median activation: {np.median(avg_activation):.6f}")
+
+    dead_rules = np.sum(avg_activation < 1e-4)
+    print(f"Near-zero activation rules (<1e-4): {dead_rules}")
+
+
+def rank_rules_by_contribution(model, X_scaled, num_mfs, feature_names, top_k=10):
+    print("\n=== MOST INFLUENTIAL RULES (Activation × Output) ===")
+
+    coeffs = model.coeff.detach().numpy()
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    rule_outputs = coeffs[:, 0]
+
+    contribution = np.abs(avg_activation * rule_outputs)
+    top_indices = np.argsort(contribution)[-top_k:][::-1]
+
+    n_inputs = len(feature_names)
+
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"\nRank {rank + 1} — Rule {rule_id}")
+        print(f"Contribution score: {contribution[rule_id]:.6f}")
+        print(f"Output constant: {rule_outputs[rule_id]:.4f}")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+
+def flood_event_rule_analysis(model, X_scaled, wl_true,
+                              num_mfs, feature_names,
+                              threshold_percentile=90,
+                              top_k=5):
+    print("\n=== FLOOD EVENT RULE ANALYSIS ===")
+
+    threshold = np.percentile(wl_true, threshold_percentile)
+    flood_mask = wl_true >= threshold
+
+    print(f"Flood threshold (>{threshold_percentile}th percentile): {threshold:.2f} cm")
+    print(f"Flood samples: {np.sum(flood_mask)}")
+
+    if np.sum(flood_mask) == 0:
+        print("No flood samples found.")
+        return
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled[flood_mask]).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    top_indices = np.argsort(avg_activation)[-top_k:][::-1]
+
+    n_inputs = len(feature_names)
+
+    print("\nTop rules during floods:\n")
+
+    for rank, rule_id in enumerate(top_indices):
+        mf_indices = decode_rule_index(rule_id, num_mfs, n_inputs)
+
+        print(f"Rank {rank + 1} — Rule {rule_id}")
+        print(f"Avg flood activation: {avg_activation[rule_id]:.6f}")
+
+        for i, feature in enumerate(feature_names):
+            print(f"   {feature} is MF_{mf_indices[i]}")
+
+
+def check_membership_spread(model):
+    print("\n=== MEMBERSHIP FUNCTION SPREAD CHECK ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs
+
+    for var_name, var_obj in variables.items():
+        centers = [mf.c.item() for mf in var_obj.mfdefs.values()]
+        spread = max(centers) - min(centers)
+
+        print(f"{var_name}: center spread = {spread:.4f}")
+
+
+def feature_importance_via_coefficients(model, X_scaled, feature_names):
+    print("\n=== FEATURE IMPORTANCE (Activation × Coefficient) ===")
+
+    coeffs = model.coeff.detach().numpy()
+    print("Coefficient tensor shape:", coeffs.shape)
+
+    if coeffs.ndim == 3:
+        coeffs = coeffs[:, 0, :]
+
+    n_rules, n_coeffs = coeffs.shape
+    n_inputs = len(feature_names)
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    importance = np.zeros(n_inputs)
+
+    for r in range(n_rules):
+        for i in range(n_inputs):
+            importance[i] += abs(avg_activation[r] * coeffs[r, i])
+
+    importance = importance / importance.sum()
+
+    for i, feature in enumerate(feature_names):
+        print(f"{feature}: {importance[i]:.4f}")
+
+
+def membership_overlap_index(model, resolution=200):
+    print("\n=== MEMBERSHIP OVERLAP INDEX ===")
+
+    fuzzify_layer = model.layer['fuzzify']
+    variables = fuzzify_layer.varmfs
+
+    x_grid = np.linspace(0, 1, resolution)
+
+    for var_name, var_obj in variables.items():
+        mfs = list(var_obj.mfdefs.values())
+        overlaps = []
+
+        for i in range(len(mfs) - 1):
+            mu1 = np.array([mfs[i](torch.tensor([x])).item() for x in x_grid])
+            mu2 = np.array([mfs[i + 1](torch.tensor([x])).item() for x in x_grid])
+
+            overlap = np.trapz(np.minimum(mu1, mu2), x_grid)
+            overlaps.append(overlap)
+
+        avg_overlap = np.mean(overlaps)
+        print(f"{var_name}: average adjacent overlap = {avg_overlap:.4f}")
+
+
+def rule_usage_entropy(model, X_scaled):
+    print("\n=== RULE USAGE ENTROPY ===")
+
+    with torch.no_grad():
+        X_tensor = torch.tensor(X_scaled).float()
+        fuzzified = model.layer['fuzzify'](X_tensor)
+        firing_strengths = model.layer['rules'](fuzzified)
+
+    avg_activation = firing_strengths.mean(dim=0).numpy()
+    total = avg_activation.sum()
+
+    if total == 0:
+        print("No rule activation detected.")
+        return
+
+    p = avg_activation / total
+    p = p[p > 0]
+
+    entropy = -np.sum(p * np.log(p))
+    max_entropy = np.log(len(avg_activation))
+
+    normalized_entropy = entropy / max_entropy
+
+    print(f"Entropy: {entropy:.4f}")
+    print(f"Normalized entropy: {normalized_entropy:.4f}")
+
+
+# ---------------- STATISTICAL TESTING ----------------
+def diebold_mariano_test(actual, pred1, pred2, loss='mse'):
+    e1 = actual - pred1
+    e2 = actual - pred2
+
+    if loss == 'mse':
+        d = (e1 ** 2) - (e2 ** 2)
+    elif loss == 'mae':
+        d = np.abs(e1) - np.abs(e2)
+    else:
+        raise ValueError("Loss must be 'mse' or 'mae'")
+
+    mean_d = np.mean(d)
+    var_d = np.var(d, ddof=1) / len(d)
+
+    dm_stat = mean_d / np.sqrt(var_d)
+    p_value = 2 * (1 - scipy.stats.norm.cdf(abs(dm_stat)))
+
+    return dm_stat, p_value
+
+
+# ---------------- RUN ----------------
 if __name__ == "__main__":
-    evaluate_hybrid_model_adaptive()
+    evaluate()

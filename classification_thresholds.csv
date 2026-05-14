@@ -1,0 +1,4 @@
+Variable,Category,Lower Bound,Upper Bound
+Pt,Low,0.0,0.7
+Pt,Medium,0.7,3.95
+Pt,High,3.95,47.45

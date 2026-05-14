@@ -3,181 +3,703 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minijos River - Live Flood Risk</title>
+    <title>Live Flood Forecasts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
-
+    <link  rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link  href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* 2. Changed the font-family to 'Lato' */
-        body { font-family: 'Lato', sans-serif; }
-        .card { background-color: #1E293B; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
-        .risk-low { background-color: #059669; color: white; }
-        .risk-moderate { background-color: #D97706; color: white; }
-        .risk-high { background-color: #DC2626; color: white; }
-        .risk-severe { background-color: #7E22CE; color: white; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Lato', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; }
+
+        .risk-low      { border-top: 4px solid #10b981; }
+        .risk-moderate { border-top: 4px solid #f59e0b; }
+        .risk-high     { border-top: 4px solid #ef4444; }
+        .risk-severe   { border-top: 4px solid #a855f7; }
+
+        .river-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 0.55rem 1rem; border-radius: 9999px;
+            font-weight: 700; font-size: 0.8rem; cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            background-color: #1e293b;
+            color: #94a3b8;
+        }
+        .river-btn:hover  { border-color: #475569; color: #e2e8f0; }
+        .river-btn.active { border-color: #3b82f6; color: #3b82f6; background-color: #1d3a5f; }
+
+        .river-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        .leaflet-popup-content-wrapper { background-color: #1e293b; color: #e2e8f0; }
+        .leaflet-popup-tip             { background-color: #1e293b; }
+
+        #stats-panel { transition: opacity 0.2s; }
+
+        /* used when a horizon card is not applicable for the selected river */
+        .horizon-card-hidden { opacity: 0.3; pointer-events: none; }
     </style>
 </head>
-<body class="bg-slate-900 text-gray-200">
+<body class="p-4 md:p-8">
+<div class="max-w-6xl mx-auto">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-white">Minijos River Flood Risk</h1>
-            <p class="text-slate-400 mt-2">Live daily forecast powered by an ANFIS AI Model</p>
-        </header>
+    <!-- HEADER -->
+    <header class="text-center mb-6">
+        <h1 class="text-4xl font-black text-white">Rivers Flood Forecast</h1>
+        <p class="text-slate-400 mt-1">ANFIS Predictive System</p>
+    </header>
 
-        <main class="grid grid-cols-1 gap-6">
-            <div id="risk-card" class="card text-center flex flex-col items-center justify-center p-6">
-                <div id="risk-icon" class="mb-4"></div>
-                <h2 class="text-lg font-semibold text-slate-300 uppercase tracking-wider">Forecast Risk Level</h2>
-                <p id="risk-level" class="text-5xl font-bold mt-1">Loading...</p>
+    <!-- RIVER SELECTOR -->
+    <div class="card mb-6">
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mr-1">
+                Select River:
+            </span>
+            <div id="river-selector" class="flex flex-wrap gap-2">
+                <!-- filled dynamically -->
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="card flex items-center justify-between">
-                    <div>
-                        <h3 class="font-semibold text-slate-300">Current Water Level</h3>
-                        <p id="current-level" class="text-4xl font-bold text-white mt-2">-- cm</p>
-                    </div>
-                    <div class="text-blue-400"><svg width="48px" height="48px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M2.5 5.5L3.11612 6.11612C3.68206 6.68206 4.44964 7 5.25 7C6.05036 7 6.81794 6.68206 7.38388 6.11612L7.61612 5.88388C8.18206 5.31794 8.94964 5 9.75 5C10.5504 5 11.3179 5.31794 11.8839 5.88388L12.1161 6.11612C12.6821 6.68206 13.4496 7 14.25 7C15.0504 7 15.8179 6.68206 16.3839 6.11612L16.6161 5.88388C17.1821 5.31794 17.9496 5 18.75 5C19.5504 5 20.3179 5.31794 20.8839 5.88388L21.5 6.5M2.5 11.5L3.11612 12.1161C3.68206 12.6821 4.44964 13 5.25 13C6.05036 13 6.81794 12.6821 7.38388 12.1161L7.61612 11.8839C8.18206 11.3179 8.94964 11 9.75 11C10.5504 11 11.3179 11.3179 11.8839 11.8839L12.1161 12.1161C12.6821 12.6821 13.4496 13 14.25 13C15.0504 13 15.8179 12.6821 16.3839 12.1161L16.6161 11.8839C17.1821 11.3179 17.9496 11 18.75 11C19.5504 11 20.3179 11.3179 20.8839 11.8839L21.5 12.5M2.5 17.5L3.11612 18.1161C3.68206 18.6821 4.44964 19 5.25 19C6.05036 19 6.81794 18.6821 7.38388 18.1161L7.61612 17.8839C8.18206 17.3179 8.94964 17 9.75 17C10.5504 17 11.3179 17.3179 11.8839 17.8839L12.1161 18.1161C12.6821 18.6821 13.4496 19 14.25 19C15.0504 19 15.8179 18.6821 16.3839 18.1161L16.6161 17.8839C17.1821 17.3179 17.9496 17 18.75 17C19.5504 17 20.3179 17.3179 20.8839 17.8839L21.5 18.5" stroke="#63D7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg></div>
-                </div>
-                <div class="card flex items-center justify-between">
-                    <div>
-                        <h3 class="font-semibold text-slate-300">Next Day Trend</h3>
-                        <p id="trend-text" class="text-4xl font-bold text-white mt-2">--</p>
-                    </div>
-                    <div id="trend-icon" class="text-gray-500"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 class="font-semibold text-slate-300 mb-4">Historical & Predicted Water Levels</h3>
-                <div class="h-64 md:h-80"><canvas id="forecast-chart"></canvas></div>
-            </div>
-
-            <div class="card">
-                <h3 class="font-semibold text-slate-300 mb-4">Live Data (Model Inputs)</h3>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                    <div><p class="text-sm text-slate-400">Klaipėda Precip (24h)</p><p id="precip-klaipeda-24h" class="text-xl font-semibold mt-1">-- mm</p></div>
-                    <div><p class="text-sm text-slate-400">Vėžaičiai Precip (24h)</p><p id="precip-vezaiciai-24h" class="text-xl font-semibold mt-1">-- mm</p></div>
-                    <div><p class="text-sm text-slate-400">Klaipėda Precip (72h)</p><p id="precip-klaipeda-72h" class="text-xl font-semibold mt-1">-- mm</p></div>
-                    <div><p class="text-sm text-slate-400">Vėžaičiai Precip (72h)</p><p id="precip-vezaiciai-72h" class="text-xl font-semibold mt-1">-- mm</p></div>
-                </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <p class="text-sm text-slate-500 mb-4">Last updated: <span id="last-updated">Never</span></p>
-                <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 flex items-center justify-center mx-auto">
-                    <span id="refresh-btn-text">Refresh Forecast</span>
-                    <div id="loader" class="loader ml-3 hidden"></div>
-                </button>
-            </div>
-        </main>
+            <span class="ml-auto text-xs text-slate-500">
+                Last updated: <span id="last-updated" class="text-slate-300">--</span>
+            </span>
+        </div>
     </div>
 
-    <script>
-        // --- DOM Element References ---
-        const ui = {
-            riskCard: document.getElementById('risk-card'), riskIcon: document.getElementById('risk-icon'),
-            riskLevel: document.getElementById('risk-level'), currentLevel: document.getElementById('current-level'),
-            trendText: document.getElementById('trend-text'), trendIcon: document.getElementById('trend-icon'),
-            lastUpdated: document.getElementById('last-updated'), refreshBtn: document.getElementById('refresh-btn'),
-            refreshBtnText: document.getElementById('refresh-btn-text'), loader: document.getElementById('loader'),
-            precipKlaipeda24h: document.getElementById('precip-klaipeda-24h'),
-            precipVezaiciai24h: document.getElementById('precip-vezaiciai-24h'),
-            precipKlaipeda72h: document.getElementById('precip-klaipeda-72h'),
-            precipVezaiciai72h: document.getElementById('precip-vezaiciai-72h'),
-            chartCanvas: document.getElementById('forecast-chart'),
-        };
-        let forecastChart = null;
+    <!--AI-->
+    <!-- AI SUMMARY -->
+<div class="card mb-6" id="ai-summary-card">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-white flex items-center gap-2">
+            AI Flood Situation Summary
+        </h3>
+        <button onclick="refreshSummary()" id="summary-refresh-btn"
+            class="text-xs text-slate-400 hover:text-white border border-slate-600
+                   hover:border-slate-400 rounded-full px-3 py-1 transition">
+            ↻ Refresh
+        </button>
+    </div>
+    <p id="ai-summary-text"
+       class="text-sm text-slate-300 leading-relaxed italic">
+        Loading AI summary…
+    </p>
+    <p id="ai-summary-meta" class="text-xs text-slate-500 mt-2"></p>
+</div>
 
-        // --- Icon & Style Maps ---
-        const icons = {
-            LOW: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-            MODERATE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-            HIGH: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-            SEVERE: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H9.5a2 2 0 0 0-2 2v1c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V4a2 2 0 0 0-2-2z"/><path d="M12 6V3"/><path d="M12 18a6 6 0 0 0 6-6 4.5 4.5 0 0 0-4.5-4.5c-2.8 0-4.4 2.3-4.5 4.5A6 6 0 0 0 12 18z"/><path d="M15.5 8.5 18 6"/><path d="m6 18 3-3"/><path d="M6 6l2.5 2.5"/><path d="m18 18-3-3"/></svg>',
-            Rising: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><line x1="12" x2="12" y1="19" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
-            Falling: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><line x1="12" x2="12" y1="5" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
-            Stable: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><line x1="5" x2="19" y1="12" y2="12"/></svg>'
-        };
-        const riskClassMap = { LOW: 'risk-low', MODERATE: 'risk-moderate', HIGH: 'risk-high', SEVERE: 'risk-severe' };
 
-        // --- UI Update Function ---
-        function updateUI(data) {
-            ui.riskCard.className = `card text-center flex flex-col items-center justify-center p-6 ${riskClassMap[data.risk.level]}`;
-            ui.riskIcon.innerHTML = icons[data.risk.level];
-            ui.riskLevel.textContent = data.risk.level;
-            ui.currentLevel.textContent = `${data.lastKnownLevel.toFixed(1)} cm`;
-            ui.trendText.textContent = data.trend.text;
-            ui.trendIcon.innerHTML = icons[data.trend.text];
-            ui.lastUpdated.textContent = new Date(data.lastUpdated).toLocaleString('lt-LT');
 
-            ui.precipKlaipeda24h.textContent = `${data.liveFeatures.precip_klaipedos_lag_24h.toFixed(1)} mm`;
-            ui.precipVezaiciai24h.textContent = `${data.liveFeatures.precip_vezaiciu_lag_24h.toFixed(1)} mm`;
-            ui.precipKlaipeda72h.textContent = `${data.liveFeatures.precip_klaipedos_lag_72h.toFixed(1)} mm`;
-            ui.precipVezaiciai72h.textContent = `${data.liveFeatures.precip_vezaiciu_lag_72h.toFixed(1)} mm`;
+    <!-- MAP -->
+    <div class="card mb-6">
+        <h3 class="font-bold text-white mb-3">Flood Risk Map</h3>
+        <div id="map" class="h-96 rounded"></div>
+    </div>
 
-            // --- Update Chart ---
-            const labels = data.historicalData.map(d => new Date(d.date).toLocaleDateString('lt-LT', { month: 'short', day: 'numeric' }));
-            const actualData = data.historicalData.map(d => d.actual ?? null);
-            const predictedData = data.historicalData.map(d => d.predicted ?? null);
+    <!-- PER-RIVER STATS -->
+    <div id="stats-panel">
 
-            if (forecastChart) forecastChart.destroy();
+        <!-- "No data yet" notice — shown when prediction job hasn't run yet -->
+        <div id="no-data-notice" class="hidden card mb-6 border-yellow-500/40 bg-yellow-950/20 text-center py-8">
+            <p class="text-yellow-300 font-bold text-lg mb-1">⏳ No predictions yet for this river</p>
+            <p class="text-slate-400 text-sm">
+                The prediction job hasn't run yet for this station.<br>
+                Data will appear after the next scheduled cycle.
+            </p>
+        </div>
 
-            forecastChart = new Chart(ui.chartCanvas, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Actual Water Level (cm)', data: actualData, borderColor: '#3B82F6', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#3B82F6', tension: 0.1 },
-                        { label: 'Predicted Water Level (cm)', data: predictedData, borderColor: '#EF4444', borderDash: [5, 5], borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#EF4444', tension: 0.1 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } },
-                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94A3B8' } }
-                    },
-                    plugins: { legend: { labels: { color: '#E2E8F0', font: { size: 14 } } } }
-                }
+        <!-- Metric cards -->
+        <div id="metric-cards" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card flex flex-col justify-center items-center text-center">
+                <span class="text-xs font-bold text-slate-500 uppercase">Current Level</span>
+                <span id="current-level" class="text-3xl font-black text-blue-400">-- cm</span>
+            </div>
+            <div class="card flex flex-col justify-center items-center text-center risk-low" id="card-1d">
+                <span class="text-xs font-bold text-slate-500 uppercase">1-Day Forecast</span>
+                <span id="pred-1d" class="text-3xl font-black text-white">-- cm</span>
+            </div>
+            <div class="card flex flex-col justify-center items-center text-center" id="card-3d">
+                <span class="text-xs font-bold text-slate-500 uppercase">3-Day Forecast</span>
+                <span id="pred-3d" class="text-3xl font-black text-white">-- cm</span>
+            </div>
+            <div class="card flex flex-col justify-center items-center text-center" id="card-5d">
+                <span class="text-xs font-bold text-slate-500 uppercase">5-Day Forecast</span>
+                <span id="pred-5d" class="text-3xl font-black text-white">-- cm</span>
+            </div>
+        </div>
+
+        <!-- Features + Rule  |  Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-4">
+                <div class="card">
+                    <h3 class="font-bold text-white mb-3 border-b border-slate-700 pb-2">
+                        Environmental Inputs
+                    </h3>
+                    <div id="features-grid" class="grid grid-cols-1 gap-3 text-sm"></div>
+                </div>
+                <div class="card bg-indigo-950/30 border-indigo-500/50">
+                    <h3 class="font-bold text-indigo-300 text-sm uppercase mb-2">Strongest Rule</h3>
+                    <p id="fired-rule-text" class="text-xs text-indigo-200 leading-relaxed italic">
+                        Loading logic…
+                    </p>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 card">
+                <h3 class="font-bold text-white mb-3" id="chart-title">
+                    Historical vs Forecast
+                </h3>
+                <div class="h-80"><canvas id="forecast-chart"></canvas></div>
+            </div>
+        </div>
+
+    </div><!-- /stats-panel -->
+
+</div><!-- /max-w -->
+
+<script>
+// ── RIVER COLOURS — used only for selector pills and chart lines ──────────
+const RIVER_COLORS = {
+    minija:           "#3b82f6",
+    dane:             "#f97316",
+    kartena:          "#10b981",
+    dane_kretinga:    "#e879f9",
+    kanalas_lankupiu: "#facc15",
+    lankupiu_minija:  "#38bdf8",
+    marios_birstonas:  "#fb7185",
+    nemunas_nemajunai: "#a78bfa",
+    nemunas_darsuniskis:  "#34d399",
+    nemunas_lampedziai:   "#f472b6",
+    vilnia_vilnius:       "#fbbf24",
+    neris_vilnius:        "#c084fc",
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let activeRiver = "minija";
+let allRivers   = [];
+let riverData   = {};
+let chart;
+
+// ── MAP STATE ─────────────────────────────────────────────────────────────
+let map;
+let riverMarkers        = {};
+let floodZoneLayers     = [];
+let infrastructureLayer = L.layerGroup();
+let stationsLayer       = L.layerGroup();
+
+// ─────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────
+async function init() {
+    initMap();
+    await loadRiverList();
+    await refreshAllRivers();
+    switchRiver(activeRiver);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────────────────────────────────
+function initMap() {
+    map = L.map("map").setView([55.4, 21.8], 8);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+    infrastructureLayer.addTo(map);
+    stationsLayer.addTo(map);
+    L.control.layers(null, {
+        "🏥 Critical Infrastructure": infrastructureLayer,
+        "📍 Monitoring Stations":      stationsLayer,
+    }, { position: "topright" }).addTo(map);
+
+    // ── Risk legend ────────────────────────────────────────────────────
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = () => {
+        const div = L.DomUtil.create("div");
+        div.style.cssText = `
+            background:#1e293b; border:1px solid #334155; border-radius:8px;
+            padding:10px 14px; font-family:Lato,sans-serif; font-size:12px;
+            color:#e2e8f0; line-height:1.8;
+        `;
+        div.innerHTML = `
+            <b style="display:block;margin-bottom:4px;">Water Level Risk</b>
+            <span style="color:#10b981">●</span> Low<br>
+            <span style="color:#f59e0b">●</span> Moderate<br>
+            <span style="color:#ef4444">●</span> High<br>
+            <span style="color:#a855f7">●</span> Severe
+        `;
+        return div;
+    };
+    legend.addTo(map);
+}
+
+function refreshRiverMarkers() {
+    allRivers.forEach(r => {
+        const data  = riverData[r.id];
+        const level = data?.horizons?.["1d"]?.level ?? 0;
+
+        // ── Marker colour comes from RISK level, not river identity ──
+        const markerColor = getRiskColor(level, data?.riskLevels);
+        // Pill button colour stays river-specific
+        const pillColor   = RIVER_COLORS[r.id] ?? "#94a3b8";
+
+        if (riverMarkers[r.id]) map.removeLayer(riverMarkers[r.id]);
+
+        const levelText    = data?.lastKnownLevel != null
+            ? `${data.lastKnownLevel} cm` : "No data yet";
+        const forecastText = data?.horizons?.["1d"]
+            ? `${level} cm` : "—";
+
+        const popupHtml = `
+            <div style="font-family:Lato;color:#e2e8f0;min-width:170px;">
+                <b style="font-size:15px;">${r.display_name}</b>
+                <hr style="border-color:#334155;margin:6px 0;">
+                <span style="color:#94a3b8;">Current:</span> <b>${levelText}</b><br>
+                <span style="color:#94a3b8;">1-Day Forecast:</span>
+                <b style="color:${markerColor};">${forecastText}</b><br>
+                ${data ? `<span style="color:#94a3b8;">Risk:</span>
+                <b style="color:${markerColor};">${getRiskLabel(level, data.riskLevels)}</b><br>` : ""}
+                <a href="#" onclick="switchRiver('${r.id}');return false;"
+                   style="color:${pillColor};font-size:11px;">▶ Select this river</a>
+            </div>`;
+
+        riverMarkers[r.id] = L.circleMarker([r.lat, r.lon], {
+            radius:      14,
+            color:       markerColor,
+            fillColor:   markerColor,
+            fillOpacity: r.id === activeRiver ? 0.85 : 0.50,
+            weight:      r.id === activeRiver ? 4    : 2,
+        }).addTo(map).bindPopup(popupHtml);
+
+        riverMarkers[r.id].on("click", () => switchRiver(r.id));
+    });
+}
+
+function refreshFloodZones(data) {
+    floodZoneLayers.forEach(l => map.removeLayer(l));
+    floodZoneLayers = [];
+    if (!data?.horizons?.["1d"]) return;
+
+    const lat   = data.lat;
+    const lon   = data.lon;
+    const level = data.horizons["1d"].level;
+    const [r1, r2, r3] = data.riskLevels ?? [250, 400, 550];
+
+    const zoneDefs = [
+        { threshold: r1, radius:  2000, color: "#10b981", label: "Low Risk Zone"               },
+        { threshold: r2, radius:  5000, color: "#f59e0b", label: "Moderate Risk Zone"          },
+        { threshold: r3, radius:  8000, color: "#ef4444", label: "High Risk Zone"              },
+        { threshold: r3, radius: 12000, color: "#a855f7", label: "Severe Risk Zone – Evacuate" },
+    ];
+
+    zoneDefs.forEach(z => {
+        if (level > z.threshold) {
+            const circle = L.circle([lat, lon], {
+                radius:      z.radius,
+                color:       z.color,
+                fillColor:   z.color,
+                fillOpacity: 0.18,
+                weight:      1.5,
+            }).bindPopup(`<b>${z.label}</b>`).addTo(map);
+            floodZoneLayers.push(circle);
+        }
+    });
+}
+
+function refreshStations(data) {
+    stationsLayer.clearLayers();
+    if (!data?.stations) return;
+    data.stations.forEach(s => {
+        // Station markers also use risk colour
+        const color = getRiskColor(s.forecast, data.riskLevels);
+        L.circleMarker([s.lat, s.lon], {
+            radius: 7, color, fillColor: color, fillOpacity: 0.8, weight: 2,
+        }).bindPopup(`
+            <div style="font-family:Lato;color:#e2e8f0;">
+                <b>${s.name}</b><br>
+                <span style="color:#94a3b8;">Current:</span> ${s.current} cm<br>
+                <span style="color:#94a3b8;">Forecast:</span>
+                <b style="color:${color};">${s.forecast} cm</b>
+            </div>`
+        ).addTo(stationsLayer);
+    });
+}
+
+function refreshInfrastructure(data) {
+    infrastructureLayer.clearLayers();
+    if (!data?.infrastructure) return;
+    const icons = {
+        hospital: "🏥", shelter: "🏠", bridge: "🌉",
+        dam: "🚧", school: "🏫", power: "⚡",
+    };
+    const level = data.horizons?.["1d"]?.level ?? 0;
+    data.infrastructure.forEach(item => {
+        const danger = isInDangerZone(
+            item.lat, item.lon, data.lat, data.lon, level, data.riskLevels
+        );
+        const icon = L.divIcon({
+            html: `<div style="font-size:22px;${danger
+                ? "filter:drop-shadow(0 0 7px red);" : ""}">${icons[item.type] ?? "📍"}</div>`,
+            className: "",
+            iconSize: [28, 28],
+        });
+        L.marker([item.lat, item.lon], { icon }).bindPopup(`
+            <div style="font-family:Lato;color:#e2e8f0;">
+                <b>${item.name}</b><br>
+                <span style="color:#94a3b8;">Type:</span> ${item.type}<br>
+                ${danger
+                    ? '<span style="color:#ef4444;font-weight:bold;">⚠️ IN FLOOD ZONE</span>'
+                    : '<span style="color:#10b981;">✓ Safe</span>'}
+            </div>`
+        ).addTo(infrastructureLayer);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DATA LOADING
+// ─────────────────────────────────────────────────────────────────────────
+async function loadRiverList() {
+    try {
+        const res = await fetch("/api/rivers");
+        allRivers = await res.json();
+        buildSelector();
+    } catch (e) {
+        console.error("Failed to load river list", e);
+    }
+}
+
+async function refreshAllRivers() {
+    await Promise.all(allRivers.map(async r => {
+        try {
+            const res = await fetch(`/api/data?river=${r.id}`);
+            if (res.ok) {
+                const body = await res.json();
+                riverData[r.id] = body.error ? null : body;
+            } else {
+                riverData[r.id] = null;
+            }
+        } catch (e) {
+            console.warn(`Could not load data for ${r.id}`, e);
+            riverData[r.id] = null;
+        }
+    }));
+    refreshRiverMarkers();
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// RIVER SELECTOR  — pills keep unique river colours
+// ─────────────────────────────────────────────────────────────────────────
+function buildSelector() {
+    const container = document.getElementById("river-selector");
+    container.innerHTML = "";
+    allRivers.forEach(r => {
+        const color = RIVER_COLORS[r.id] ?? "#94a3b8";
+        const btn   = document.createElement("button");
+        btn.id        = `btn-${r.id}`;
+        btn.className = `river-btn ${r.id === activeRiver ? "active" : ""}`;
+        btn.innerHTML = `
+            <span class="river-dot" style="background:${color};"></span>
+            ${r.display_name}`;
+        btn.onclick = () => switchRiver(r.id);
+        container.appendChild(btn);
+    });
+}
+
+function switchRiver(id) {
+    activeRiver = id;
+
+    allRivers.forEach(r => {
+        const btn = document.getElementById(`btn-${r.id}`);
+        if (btn) btn.className = `river-btn ${r.id === id ? "active" : ""}`;
+    });
+
+    // Re-apply marker styles (active gets heavier border, all keep risk colour)
+    allRivers.forEach(r => {
+        if (riverMarkers[r.id]) {
+            const data        = riverData[r.id];
+            const level       = data?.horizons?.["1d"]?.level ?? 0;
+            const markerColor = getRiskColor(level, data?.riskLevels);
+            riverMarkers[r.id].setStyle({
+                color:       markerColor,
+                fillColor:   markerColor,
+                fillOpacity: r.id === id ? 0.85 : 0.50,
+                weight:      r.id === id ? 4    : 2,
             });
         }
+    });
 
-        // --- Main Execution Logic ---
-        async function runForecast() {
-            ui.refreshBtn.disabled = true;
-            ui.refreshBtnText.classList.add('hidden');
-            ui.loader.classList.remove('hidden');
-            try {
-                const response = await fetch('/api/predict');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const forecastData = await response.json();
-                updateUI(forecastData);
-            } catch (error) {
-                console.error("Failed to get forecast:", error);
-                alert("Could not retrieve the forecast. Check the console for details.");
-            } finally {
-                ui.refreshBtn.disabled = false;
-                ui.refreshBtnText.classList.remove('hidden');
-                ui.loader.classList.add('hidden');
-            }
+    const r = allRivers.find(x => x.id === id);
+    if (r) map.flyTo([r.lat, r.lon], 10, { duration: 0.8 });
+
+    clearStatsPanel();
+
+    const data = riverData[id];
+    updateStatsPanel(data);
+    refreshFloodZones(data);
+    refreshStations(data);
+    refreshInfrastructure(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// STATS PANEL
+// ─────────────────────────────────────────────────────────────────────────
+function clearStatsPanel() {
+    document.getElementById("current-level").textContent = "-- cm";
+    document.getElementById("pred-1d").textContent       = "-- cm";
+    document.getElementById("pred-3d").textContent       = "-- cm";
+    document.getElementById("pred-5d").textContent       = "-- cm";
+
+    document.getElementById("card-1d").className =
+        "card flex flex-col justify-center items-center text-center risk-low";
+
+    document.getElementById("features-grid").innerHTML = "";
+    document.getElementById("fired-rule-text").textContent = "—";
+    document.getElementById("last-updated").textContent    = "--";
+    document.getElementById("chart-title").textContent     = "Historical vs Forecast";
+
+    if (chart) { chart.destroy(); chart = null; }
+
+    document.getElementById("no-data-notice").classList.add("hidden");
+    document.getElementById("metric-cards").classList.remove("hidden");
+}
+
+function updateStatsPanel(data) {
+    const panel = document.getElementById("stats-panel");
+    panel.style.opacity = "0";
+    setTimeout(() => { panel.style.opacity = "1"; }, 50);
+
+    if (!data) {
+        document.getElementById("no-data-notice").classList.remove("hidden");
+        document.getElementById("metric-cards").classList.add("hidden");
+        return;
+    }
+
+    document.getElementById("no-data-notice").classList.add("hidden");
+    document.getElementById("metric-cards").classList.remove("hidden");
+
+    const riskLevels = data.riskLevels ?? [250, 400, 550];
+
+    document.getElementById("current-level").textContent =
+        data.lastKnownLevel != null ? `${data.lastKnownLevel} cm` : "-- cm";
+
+    document.getElementById("last-updated").textContent =
+        new Date(data.lastUpdated).toLocaleString();
+
+    document.getElementById("chart-title").textContent =
+        `${data.riverName} – Historical vs Forecast`;
+
+    const h1d = data.horizons?.["1d"];
+    if (h1d) {
+        document.getElementById("pred-1d").textContent = `${h1d.level} cm`;
+        document.getElementById("card-1d").className =
+            "card flex flex-col justify-center items-center text-center " +
+            getRiskClass(h1d.level, riskLevels);
+    }
+
+    const h3d    = data.horizons?.["3d"];
+    const card3d = document.getElementById("card-3d");
+    if (h3d) {
+        document.getElementById("pred-3d").textContent = `${h3d.level} cm`;
+        card3d.classList.remove("horizon-card-hidden");
+    } else {
+        document.getElementById("pred-3d").textContent = "N/A";
+        card3d.classList.add("horizon-card-hidden");
+    }
+
+    const h5d    = data.horizons?.["5d"];
+    const card5d = document.getElementById("card-5d");
+    if (h5d) {
+        document.getElementById("pred-5d").textContent = `${h5d.level} cm`;
+        card5d.classList.remove("horizon-card-hidden");
+    } else {
+        document.getElementById("pred-5d").textContent = "N/A";
+        card5d.classList.add("horizon-card-hidden");
+    }
+
+    const featGrid = document.getElementById("features-grid");
+    featGrid.innerHTML = "";
+    if (data.currentFeatures) {
+        Object.entries(data.currentFeatures).forEach(([k, v]) => {
+            featGrid.innerHTML += `
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span class="text-slate-400">${k}</span>
+                    <span class="font-bold text-white">${v}</span>
+                </div>`;
+        });
+    }
+
+    document.getElementById("fired-rule-text").textContent =
+        data.firedRule || "No rule data.";
+
+    renderChart(data.historicalData ?? [], data.riverKey);
+}
+// ── AI SUMMARY ────────────────────────────────────────────────────────────
+async function loadAISummary() {
+    const el   = document.getElementById("ai-summary-text");
+    const meta = document.getElementById("ai-summary-meta");
+    const btn  = document.getElementById("summary-refresh-btn");
+
+    el.textContent  = "Generating summary…";
+    el.style.color  = "#94a3b8";
+    btn.disabled    = true;
+
+    try {
+        const res  = await fetch("/api/summary");
+        const data = await res.json();
+
+        el.textContent = data.summary;
+        el.style.color = "#e2e8f0";
+        meta.textContent = data.generated_at
+            ? `Generated: ${new Date(data.generated_at).toLocaleTimeString()}  |  ${data.river_count} rivers analysed`
+            : "";
+    } catch (e) {
+        el.textContent = "AI summary could not be loaded.";
+        el.style.color  = "#f87171";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function refreshSummary() {
+    loadAISummary();
+}
+
+window.onload = () => {
+    init();
+    loadAISummary();                        // ← add this
+    setInterval(periodicRefresh, 300_000);
+    setInterval(loadAISummary, 600_000);    // ← refresh every 10 min
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// CHART — actual line uses river colour; forecasts use fixed colours
+// ─────────────────────────────────────────────────────────────────────────
+function renderChart(history, riverKey) {
+    const ctx = document.getElementById("forecast-chart").getContext("2d");
+    if (chart) { chart.destroy(); chart = null; }
+
+    const dateMap = {};
+    history.forEach(item => {
+        if (!dateMap[item.date]) {
+            dateMap[item.date] = { ...item };
+        } else {
+            ["actual", "pred1d", "pred3d", "pred5d"].forEach(k => {
+                dateMap[item.date][k] = dateMap[item.date][k] ?? item[k];
+            });
         }
+    });
 
-        // --- Event Listeners and Timers ---
-        ui.refreshBtn.addEventListener('click', runForecast);
-        document.addEventListener('DOMContentLoaded', runForecast);
-        setInterval(runForecast, 3600 * 1000); // Auto-refresh every hour
+    const rows       = Object.values(dateMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const riverColor = RIVER_COLORS[riverKey] ?? "#3b82f6";
 
-    </script>
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: rows.map(d => d.date),
+            datasets: [
+                {
+                    label: "Actual",
+                    data: rows.map(d => d.actual),
+                    borderColor: riverColor, backgroundColor: riverColor,
+                    tension: 0.3, spanGaps: true,
+                },
+                {
+                    label: "1D Forecast",
+                    data: rows.map(d => d.pred1d),
+                    borderColor: "#a855f7", backgroundColor: "#a855f7",
+                    borderDash: [5, 5], tension: 0.3, spanGaps: true,
+                },
+                {
+                    label: "3D Forecast",
+                    data: rows.map(d => d.pred3d),
+                    borderColor: "#f59e0b", backgroundColor: "#f59e0b",
+                    borderDash: [6, 4], tension: 0.3, spanGaps: true,
+                },
+                {
+                    label: "5D Forecast",
+                    data: rows.map(d => d.pred5d),
+                    borderColor: "#ef4444", backgroundColor: "#ef4444",
+                    borderDash: [3, 3], tension: 0.3, spanGaps: true,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: "#94a3b8", usePointStyle: true } },
+            },
+            scales: {
+                x: { ticks: { color: "#94a3b8" }, grid: { color: "#334155" } },
+                y: {
+                    ticks: { color: "#94a3b8" }, grid: { color: "#334155" },
+                    title: { display: true, text: "Water Level (cm)", color: "#94a3b8" },
+                },
+            },
+        },
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────
+function getRiskColor(level, riskLevels) {
+    const [r1, r2, r3] = riskLevels ?? [250, 400, 550];
+    if (level > r3) return "#a855f7";   // severe  — purple
+    if (level > r2) return "#ef4444";   // high    — red
+    if (level > r1) return "#f59e0b";   // moderate — amber
+    return "#10b981";                   // low     — green
+}
+
+function getRiskClass(level, riskLevels) {
+    const [r1, r2, r3] = riskLevels ?? [250, 400, 550];
+    if (level > r3) return "risk-severe";
+    if (level > r2) return "risk-high";
+    if (level > r1) return "risk-moderate";
+    return "risk-low";
+}
+
+function getRiskLabel(level, riskLevels) {
+    const [r1, r2, r3] = riskLevels ?? [250, 400, 550];
+    if (level > r3) return "🚨 SEVERE";
+    if (level > r2) return "⚠️ HIGH";
+    if (level > r1) return "⚡ MODERATE";
+    return "✓ LOW";
+}
+
+function isInDangerZone(lat, lon, mainLat, mainLon, level, riskLevels) {
+    const dist = getDistance(lat, lon, mainLat, mainLon);
+    const [r1, r2, r3] = riskLevels ?? [250, 400, 550];
+    if (level > r3) return dist < 12;
+    if (level > r2) return dist < 8;
+    if (level > r1) return dist < 5;
+    return false;
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R    = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a    =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PERIODIC REFRESH
+// ─────────────────────────────────────────────────────────────────────────
+async function periodicRefresh() {
+    await refreshAllRivers();
+    clearStatsPanel();
+    const data = riverData[activeRiver];
+    updateStatsPanel(data);
+    refreshFloodZones(data);
+    refreshStations(data);
+    refreshInfrastructure(data);
+}
+
+
+</script>
 
 </body>
 </html>

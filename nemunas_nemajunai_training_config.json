@@ -1,0 +1,12 @@
+{
+    "num_mfs": 5,
+    "features": [
+        "API_norm",
+        "S_t",
+        "SMI_t",
+        "Pt",
+        "delta_WL_t"
+    ],
+    "k_decay": 0.85,
+    "num_epochs": 300
+}

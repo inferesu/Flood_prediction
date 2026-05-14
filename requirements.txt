@@ -1,7 +1,10 @@
-Flask
-pandas
-numpy
-torch
-scikit-learn
-joblib
+flask
+python-dotenv
 requests
+numpy
+pandas
+torch
+joblib
+scikit-learn
+apscheduler
+google-genai
