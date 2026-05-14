@@ -65,6 +65,28 @@
         </div>
     </div>
 
+    <!--AI-->
+    <!-- AI SUMMARY -->
+<div class="card mb-6" id="ai-summary-card">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-white flex items-center gap-2">
+            AI Flood Situation Summary
+        </h3>
+        <button onclick="refreshSummary()" id="summary-refresh-btn"
+            class="text-xs text-slate-400 hover:text-white border border-slate-600
+                   hover:border-slate-400 rounded-full px-3 py-1 transition">
+            ↻ Refresh
+        </button>
+    </div>
+    <p id="ai-summary-text"
+       class="text-sm text-slate-300 leading-relaxed italic">
+        Loading AI summary…
+    </p>
+    <p id="ai-summary-meta" class="text-xs text-slate-500 mt-2"></p>
+</div>
+
+
+
     <!-- MAP -->
     <div class="card mb-6">
         <h3 class="font-bold text-white mb-3">Flood Risk Map</h3>
@@ -508,6 +530,44 @@ function updateStatsPanel(data) {
 
     renderChart(data.historicalData ?? [], data.riverKey);
 }
+// ── AI SUMMARY ────────────────────────────────────────────────────────────
+async function loadAISummary() {
+    const el   = document.getElementById("ai-summary-text");
+    const meta = document.getElementById("ai-summary-meta");
+    const btn  = document.getElementById("summary-refresh-btn");
+
+    el.textContent  = "Generating summary…";
+    el.style.color  = "#94a3b8";
+    btn.disabled    = true;
+
+    try {
+        const res  = await fetch("/api/summary");
+        const data = await res.json();
+
+        el.textContent = data.summary;
+        el.style.color = "#e2e8f0";
+        meta.textContent = data.generated_at
+            ? `Generated: ${new Date(data.generated_at).toLocaleTimeString()}  |  ${data.river_count} rivers analysed`
+            : "";
+    } catch (e) {
+        el.textContent = "AI summary could not be loaded.";
+        el.style.color  = "#f87171";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function refreshSummary() {
+    loadAISummary();
+}
+
+window.onload = () => {
+    init();
+    loadAISummary();                        // ← add this
+    setInterval(periodicRefresh, 300_000);
+    setInterval(loadAISummary, 600_000);    // ← refresh every 10 min
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────
 // CHART — actual line uses river colour; forecasts use fixed colours
@@ -638,10 +698,7 @@ async function periodicRefresh() {
     refreshInfrastructure(data);
 }
 
-window.onload = () => {
-    init();
-    setInterval(periodicRefresh, 300_000);
-};
+
 </script>
 
 </body>
