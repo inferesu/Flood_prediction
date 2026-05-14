@@ -18,7 +18,7 @@ SEED       = 42
 NUM_MFS    = 5
 NUM_EPOCHS = 300
 K_DECAY    = 0.85
-LR         = 1e-4          # reduced from 1e-3 — safer for ANFIS
+LR         = 1e-4
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -105,7 +105,7 @@ def has_nan_params(model: torch.nn.Module) -> bool:
 # ---------------------------------------------------------------------------
 def train_and_save():
     print("=" * 60)
-    print("   🌊 DANE ANFIS TRAINING PIPELINE")
+    print("   DANE ANFIS TRAINING PIPELINE")
     print(f"   Input  : {TRAIN_DATA_FILE}")
     print(f"   Model  : {MODEL_FILE}")
     print(f"   LR     : {LR}")
@@ -114,13 +114,13 @@ def train_and_save():
     # ── Step 1: Load & prepare ───────────────────────────────────────────
     print("\n━━━ STEP 1: Loading & Preparing Features ━━━━━━━━━━━━━━━━")
     df = prepare_complex_features(pd.read_csv(TRAIN_DATA_FILE))
-    print(f"   ✔️  Dataset loaded — {len(df)} rows after dropna")
+    print(f"   Dataset loaded — {len(df)} rows after dropna")
 
     X = df[FEATURES_LIST].values
     y = df[TARGET].values.reshape(-1, 1)
-    print(f"   ✔️  X shape: {X.shape}  |  y shape: {y.shape}")
-    print(f"   ✔️  X range: [{X.min():.3f}, {X.max():.3f}]")
-    print(f"   ✔️  y range: [{y.min():.3f}, {y.max():.3f}]")
+    print(f"   X shape: {X.shape}  |  y shape: {y.shape}")
+    print(f"   X range: [{X.min():.3f}, {X.max():.3f}]")
+    print(f"   y range: [{y.min():.3f}, {y.max():.3f}]")
 
     # ── Step 2: Scale ────────────────────────────────────────────────────
     print("\n━━━ STEP 2: Scaling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -131,17 +131,17 @@ def train_and_save():
 
     joblib.dump(scaler_X, SCALER_X_FILE)
     joblib.dump(scaler_y, SCALER_Y_FILE)
-    print(f"   ✔️  Scalers saved → {SCALER_X_FILE}, {SCALER_Y_FILE}")
+    print(f"   Scalers saved → {SCALER_X_FILE}, {SCALER_Y_FILE}")
 
     # ── Step 3: Build ────────────────────────────────────────────────────
     print("\n━━━ STEP 3: Building ANFIS Model ━━━━━━━━━━━━━━━━━━━━━━━━")
     model = build_anfis(len(FEATURES_LIST), NUM_MFS)
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"   ✔️  ANFIS built — inputs={len(FEATURES_LIST)}, MFs={NUM_MFS}, params={total_params}")
+    print(f"   ANFIS built — inputs={len(FEATURES_LIST)}, MFs={NUM_MFS}, params={total_params}")
 
     # Verify initialisation is clean before touching a single gradient
     assert not has_nan_params(model), "NaN in model parameters at init — check BellMembFunc"
-    print("   ✔️  Parameter init verified — no NaN")
+    print("   Parameter init verified — no NaN")
 
     # Adam is more numerically stable than SGD for ANFIS
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
@@ -151,8 +151,8 @@ def train_and_save():
     y_t = torch.tensor(y_scaled).float()
     loader = DataLoader(TensorDataset(x_t, y_t), batch_size=32, shuffle=True)
 
-    # ── Step 4: Train ────────────────────────────────────────────────────
-    print(f"\n━━━ STEP 4: Training ({NUM_EPOCHS} epochs) ━━━━━━━━━━━━━━━━━━━━")
+    # Train
+    print(f"\n Training ({NUM_EPOCHS} epochs)")
     best_loss  = float('inf')
     best_state = None
 
@@ -160,7 +160,7 @@ def train_and_save():
 
         # Stop immediately if parameters have gone NaN
         if has_nan_params(model):
-            print(f"\n   ⚠️  NaN detected in parameters at epoch {epoch} — stopping early.")
+            print(f"\n NaN detected in parameters at epoch {epoch} — stopping early.")
             print("   Restoring best known-good state.")
             if best_state is not None:
                 model.load_state_dict(best_state)
@@ -173,7 +173,7 @@ def train_and_save():
             loss = criterion(out, yb)
 
             if torch.isnan(loss):
-                print(f"   ⚠️  NaN loss at epoch {epoch} — skipping batch.")
+                print(f"  NaN loss at epoch {epoch} — skipping batch.")
                 continue
 
             loss.backward()
@@ -195,29 +195,29 @@ def train_and_save():
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
         if (epoch + 1) % 20 == 0:
-            nan_flag = " ⚠️ NaN params!" if has_nan_params(model) else ""
+            nan_flag = " NaN params!" if has_nan_params(model) else ""
             print(f"   📉 Epoch [{epoch + 1:3d}/{NUM_EPOCHS}]  "
                   f"Loss: {avg_loss:.6f}  |  Best: {best_loss:.6f}{nan_flag}")
 
     # Restore best state before saving
     if best_state is not None:
         model.load_state_dict(best_state)
-        print(f"\n   ✔️  Best model state restored (loss={best_loss:.6f})")
+        print(f"\n   Best model state restored (loss={best_loss:.6f})")
 
     # Final NaN check
     if has_nan_params(model):
-        print("\n   ❌ Model still contains NaN after training. Do NOT save — fix the data first.")
+        print("\n  Model still contains NaN after training. Do NOT save — fix the data first.")
         return
 
     # ── Step 5: Save ─────────────────────────────────────────────────────
-    print(f"\n━━━ STEP 5: Saving Model & Config ━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"\nSaving Model & Config")
 
     coeff = model.coeff
     if isinstance(coeff, np.ndarray):
         coeff = torch.tensor(coeff, dtype=torch.float32)
 
     if coeff is not None and torch.isnan(coeff).any():
-        print("   ⚠️  coeff contains NaN — running fit_coeff one final time.")
+        print(" coeff contains NaN — running fit_coeff one final time.")
         with torch.no_grad():
             model.fit_coeff(x_t, y_t)
         coeff = model.coeff
@@ -231,7 +231,7 @@ def train_and_save():
         'num_mfs':          NUM_MFS,
         'k_decay':          K_DECAY,
     }, MODEL_FILE)
-    print(f"   ✔️  Model saved → {MODEL_FILE}")
+    print(f"  Model saved → {MODEL_FILE}")
 
     with open(CONFIG_FILE, 'w') as f:
         json.dump({
@@ -243,8 +243,8 @@ def train_and_save():
     print(f"   ✔️  Training config saved → {CONFIG_FILE}")
 
     print("\n" + "=" * 60)
-    print(f"   ✅ Training complete!")
-    print(f"   📉 Final best loss : {best_loss:.6f}")
+    print(f"  Training complete!")
+    print(f"  Final best loss : {best_loss:.6f}")
     print("=" * 60)
 
 
