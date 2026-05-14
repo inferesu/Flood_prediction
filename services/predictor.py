@@ -23,7 +23,6 @@ logger = logging.getLogger("flood_app")
 
 
 def _load_model(h_cfg: dict, num_mfs: int, horizon_id: str, display_name: str):
-    """Load and return an ANFIS model from checkpoint."""
     centres = torch.linspace(0.1, 0.9, num_mfs)
     invardefs = [
         (
@@ -44,7 +43,9 @@ def _load_model(h_cfg: dict, num_mfs: int, horizon_id: str, display_name: str):
     ckpt = torch.load(h_cfg["model"], map_location="cpu")
     model.load_state_dict(ckpt["model_state_dict"])
 
-    coeff = ckpt.get("coeff") or ckpt.get("consequent_coeffs")
+    coeff = ckpt.get("coeff")
+    if coeff is None:
+        coeff = ckpt.get("consequent_coeffs")
     if coeff is None:
         logger.error(f"[{display_name}] {horizon_id}: no coeff in checkpoint.")
         return None
@@ -54,6 +55,7 @@ def _load_model(h_cfg: dict, num_mfs: int, horizon_id: str, display_name: str):
     model.coeff = coeff
     model.eval()
     return model
+
 
 
 def run_prediction_job(config: dict):
