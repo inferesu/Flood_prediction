@@ -13,10 +13,10 @@ import scipy.stats
 
 # ---------------- PATHS ----------------
 # Updated paths to point to the 3D model artifacts
-ANFIS_MODEL_PATH = "anfis_model_3d.pth"
-SCALER_X_PATH = "scaler_X_3d.pkl"
-SCALER_Y_PATH = "scaler_y_3d.pkl"
-CONFIG_JSON_PATH = "training_config_3d.json" # Make sure this JSON reflects the new target!
+ANFIS_MODEL_PATH = "ANFIS_models/anfis_model_3d.pth"
+SCALER_X_PATH = "Scalers/scaler_X_3d.pkl"
+SCALER_Y_PATH = "Scalers/scaler_y_3d.pkl"
+CONFIG_JSON_PATH = "Training_configs/training_config_3d.json"  # Make sure this JSON reflects the new target!
 TEST_DATA_FILE = "minija_complex_data_test.csv"
 
 # ---------------- CONSTANTS & RESOURCE TRACKING ----------------

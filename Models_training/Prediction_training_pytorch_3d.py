@@ -14,7 +14,7 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 K_DECAY = 0.85  #
-TRAIN_DATA_FILE = 'minija_complex_data_2024.csv'
+TRAIN_DATA_FILE = '../minija_complex_data_2024.csv'
 FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
 # Updated target name to reflect the 3-day prediction
 TARGET = 'target_change_3d'
@@ -68,8 +68,8 @@ def train_and_save():
     X_scaled, y_scaled = scaler_X.fit_transform(X), scaler_y.fit_transform(y)
 
     # MODIFIED: Save scalers with a '_3d' suffix
-    joblib.dump(scaler_X, "Scalers/scaler_X_3d.pkl")
-    joblib.dump(scaler_y, "Scalers/scaler_y_3d.pkl")
+    joblib.dump(scaler_X, "../Scalers/scaler_X_3d.pkl")
+    joblib.dump(scaler_y, "../Scalers/scaler_y_3d.pkl")
 
     model = build_anfis(len(FEATURES_LIST), NUM_MFS)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
@@ -90,7 +90,7 @@ def train_and_save():
             print(f"Epoch {epoch + 1}, Loss: {loss.item():.6f}")
 
     # MODIFIED: Save the model with a '_3d' suffix
-    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "ANFIS_models/anfis_model_3d.pth")
+    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "../ANFIS_models/anfis_model_3d.pth")
 
 
 if __name__ == "__main__":

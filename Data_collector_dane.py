@@ -152,13 +152,13 @@ def main():
     print(f"   Meteo  : {STATION_CODE_METEO_1}")
     print("=" * 60)
 
-    # --- Step 1: Data Acquisition ---
-    print("\n━━━ STEP 1: Data Acquisition ━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    # Data Acquisition
+    print("\nData Acquisition")
     w_data = fetch_water_levels(STATION_CODE_HYDRO, start_date, end_date)
     m1_data = fetch_meteo_data(STATION_CODE_METEO_1, start_date, end_date)
 
-    # --- Step 2: Merging ---
-    print("\n━━━ STEP 2: Merging Data ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    # Merging
+    print("\nMerging")
 
     print(f"  Building water level DataFrame ({len(w_data)} raw records)...")
     df_w = pd.DataFrame(w_data)
@@ -176,12 +176,12 @@ def main():
     df_final.fillna(0, inplace=True)
     print(f"  Merge complete — {len(df_final)} rows, {missing_before} NaN values filled with 0")
 
-    # --- Step 3: Hydrological Logic ---
-    print("\n━━━ STEP 3: Hydrological Feature Engineering ━━━━━━━━━━━━━")
+    # Feature Engineering
+    print("\nFeature Engineering")
     df_final = apply_hydrological_logic(df_final)
 
-    # --- Step 4: Save ---
-    print("\n━━━ STEP 4: Saving Output ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    # Save
+    print("\nSaving Output")
     df_final.to_csv(DATA_FILE, index=False)
     print(f"   File saved: {DATA_FILE}")
     print(f"   Shape: {df_final.shape[0]} rows × {df_final.shape[1]} columns")

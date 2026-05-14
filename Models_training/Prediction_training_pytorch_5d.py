@@ -14,10 +14,10 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 K_DECAY = 0.85  #
-TRAIN_DATA_FILE = 'minija_complex_data_2024.csv'
+TRAIN_DATA_FILE = '../minija_complex_data_2024.csv'
 FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
-# Updated target name to reflect the 3-day prediction
-TARGET = 'target_change_3d'
+# MODIFIED: Updated target name to reflect the 5-day prediction
+TARGET = 'target_change_5d'
 
 
 def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -45,8 +45,8 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
     # Trend Persistence (Eq. 21)
     df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
 
-    # MODIFIED: Predict 3 days ahead instead of 1
-    df['target_change_3d'] = df['water_level_cm'].shift(-3) - df['water_level_cm']
+    # MODIFIED: Predict 5 days ahead instead of 3
+    df['target_change_5d'] = df['water_level_cm'].shift(-5) - df['water_level_cm']
 
     return df.dropna()
 
@@ -57,7 +57,8 @@ def build_anfis(num_inputs, num_mfs):
         # Bell functions to capture thresholds like theta_API (Eq. 15)
         mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]
         invardefs.append((f'x{i}', mfs))
-    return AnfisNet('Flood Model 3D', invardefs, ['y'], hybrid=True)
+    # MODIFIED: Renamed the internal model to 5D
+    return AnfisNet('Flood Model 5D', invardefs, ['y'], hybrid=True)
 
 
 def train_and_save():
@@ -67,9 +68,9 @@ def train_and_save():
     scaler_X, scaler_y = MinMaxScaler(), MinMaxScaler()
     X_scaled, y_scaled = scaler_X.fit_transform(X), scaler_y.fit_transform(y)
 
-    # MODIFIED: Save scalers with a '_3d' suffix
-    joblib.dump(scaler_X, "Scalers/scaler_X_3d.pkl")
-    joblib.dump(scaler_y, "Scalers/scaler_y_3d.pkl")
+    # MODIFIED: Save scalers with a '_5d' suffix
+    joblib.dump(scaler_X, "../Scalers/scaler_X_5d.pkl")
+    joblib.dump(scaler_y, "../Scalers/scaler_y_5d.pkl")
 
     model = build_anfis(len(FEATURES_LIST), NUM_MFS)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
@@ -89,8 +90,8 @@ def train_and_save():
         if (epoch + 1) % 20 == 0:
             print(f"Epoch {epoch + 1}, Loss: {loss.item():.6f}")
 
-    # MODIFIED: Save the model with a '_3d' suffix
-    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "ANFIS_models/anfis_model_3d.pth")
+    # MODIFIED: Save the model with a '_5d' suffix
+    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "../ANFIS_models/anfis_model_5d.pth")
 
 
 if __name__ == "__main__":

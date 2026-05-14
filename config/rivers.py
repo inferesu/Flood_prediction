@@ -1,8 +1,16 @@
 """
-River configuration definitions
+River configuration definitions.
 Each config defines the river name, data paths, hydro/meteo stations,
 risk thresholds, and model files for each forecast horizon.
 """
+
+import os
+
+# Base directories for models, scalers, and training configs
+_ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+MODELS_DIR = os.path.join(_ROOT_DIR, "ANFIS_models")
+SCALERS_DIR = os.path.join(_ROOT_DIR, "Scalers")
+CONFIGS_DIR = os.path.join(_ROOT_DIR, "Training_configs")
 
 
 def _horizons(prefix, days_list=(1, 3, 5)):
@@ -15,16 +23,19 @@ def _horizons(prefix, days_list=(1, 3, 5)):
         tag = suffix_map[d]
         file_suffix = f"_{tag}" if d > 1 else ""
         horizons[tag] = {
-            "model": f"{prefix}_anfis_model{file_suffix}.pth",
-            "scaler_x": f"{prefix}_scaler_X{file_suffix}.pkl",
-            "scaler_y": f"{prefix}_scaler_y{file_suffix}.pkl",
-            "config": f"{prefix}_training_config{file_suffix}.json",
+            "model": os.path.join(MODELS_DIR, f"{prefix}_anfis_model{file_suffix}.pth"),
+            "scaler_x": os.path.join(SCALERS_DIR, f"{prefix}_scaler_X{file_suffix}.pkl"),
+            "scaler_y": os.path.join(SCALERS_DIR, f"{prefix}_scaler_y{file_suffix}.pkl"),
+            "config": os.path.join(CONFIGS_DIR, f"{prefix}_training_config{file_suffix}.json"),
             "label": label_map[d],
             "days_ahead": d,
         }
     return horizons
 
+
+# ---------------------------------------------------------------------------
 # Individual river configs
+# ---------------------------------------------------------------------------
 
 MINIJA_CONFIG = {
     "name": "minija",
@@ -38,26 +49,26 @@ MINIJA_CONFIG = {
     "risk_levels": [250, 400, 550],
     "horizons": {
         "1d": {
-            "model": "anfis_model.pth",
-            "scaler_x": "scaler_X.pkl",
-            "scaler_y": "scaler_Y.pkl",
-            "config": "training_config.json",
+            "model": os.path.join(MODELS_DIR, "anfis_model.pth"),
+            "scaler_x": os.path.join(SCALERS_DIR, "scaler_X.pkl"),
+            "scaler_y": os.path.join(SCALERS_DIR, "scaler_Y.pkl"),
+            "config": os.path.join(CONFIGS_DIR, "training_config.json"),
             "label": "1-Day Forecast",
             "days_ahead": 1,
         },
         "3d": {
-            "model": "anfis_model_3d.pth",
-            "scaler_x": "scaler_X_3d.pkl",
-            "scaler_y": "scaler_y_3d.pkl",
-            "config": "training_config_3d.json",
+            "model": os.path.join(MODELS_DIR, "anfis_model_3d.pth"),
+            "scaler_x": os.path.join(SCALERS_DIR, "scaler_X_3d.pkl"),
+            "scaler_y": os.path.join(SCALERS_DIR, "scaler_y_3d.pkl"),
+            "config": os.path.join(CONFIGS_DIR, "training_config_3d.json"),
             "label": "3-Day Forecast",
             "days_ahead": 3,
         },
         "5d": {
-            "model": "anfis_model_5d.pth",
-            "scaler_x": "scaler_X_5d.pkl",
-            "scaler_y": "scaler_y_5d.pkl",
-            "config": "training_config_5d.json",
+            "model": os.path.join(MODELS_DIR, "anfis_model_5d.pth"),
+            "scaler_x": os.path.join(SCALERS_DIR, "scaler_X_5d.pkl"),
+            "scaler_y": os.path.join(SCALERS_DIR, "scaler_y_5d.pkl"),
+            "config": os.path.join(CONFIGS_DIR, "training_config_5d.json"),
             "label": "5-Day Forecast",
             "days_ahead": 5,
         },
@@ -225,3 +236,4 @@ RIVER_CONFIGS = {
     "vilnia_vilnius": VILNIA_VILNIUS_CONFIG,
     "neris_vilnius": NERIS_VILNIUS_CONFIG,
 }
+

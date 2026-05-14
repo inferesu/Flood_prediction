@@ -13,10 +13,10 @@ from anfis.membership import BellMembFunc
 # ---------------- PATHS ----------------
 TEST_DATA_FILE = "minija_complex_data_test.csv"
 TRAIN_DATA_FILE = "minija_complex_data_2024.csv"
-MODEL_SAVE_PATH = "anfis_model.pth"
-SCALER_X_PATH = "scaler_X.pkl"
+MODEL_SAVE_PATH = "ANFIS_models/anfis_model.pth"
+SCALER_X_PATH = "Scalers/scaler_X.pkl"
 SCALER_Y_PATH = "scaler_y.pkl"
-CONFIG_JSON_PATH = "training_config.json"
+CONFIG_JSON_PATH = "Training_configs/training_config.json"
 
 K_DECAY = 0.85
 

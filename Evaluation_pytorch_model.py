@@ -12,10 +12,10 @@ from anfis.membership import BellMembFunc
 import scipy.stats
 
 # ---------------- PATHS ----------------
-ANFIS_MODEL_PATH = "anfis_model.pth"
-SCALER_X_PATH = "scaler_X.pkl"
+ANFIS_MODEL_PATH = "ANFIS_models/anfis_model.pth"
+SCALER_X_PATH = "Scalers/scaler_X.pkl"
 SCALER_Y_PATH = "scaler_y.pkl"
-CONFIG_JSON_PATH = "training_config.json"
+CONFIG_JSON_PATH = "Training_configs/training_config.json"
 TEST_DATA_FILE = "minija_complex_data_test.csv"
 
 # ---------------- CONSTANTS & RESOURCE TRACKING ----------------

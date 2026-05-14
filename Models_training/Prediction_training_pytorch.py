@@ -10,19 +10,18 @@ from anfis.membership import BellMembFunc
 SEED = 42
 NUM_MFS = 5
 NUM_EPOCHS = 300
-random.seed(SEED)
-np.random.seed(SEED)
+random.seed(SEED);
+np.random.seed(SEED);
 torch.manual_seed(SEED)
 K_DECAY = 0.85  #
-TRAIN_DATA_FILE = 'minija_complex_data_2024.csv'
+TRAIN_DATA_FILE = '../minija_complex_data_2024.csv'
 FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
-# Updated target name to reflect the 3-day prediction
-TARGET = 'target_change_3d'
+TARGET = 'target_change'
 
 
 def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy().sort_index()
-    df['Pt'] = df[['precip_klaipedos-ams', 'precip_vezaiciu-ams']].mean(axis=1)
+    df['Pt'] = df[['precip_klaipedos-ams', 'precip_vezaiciu-ams']].mean(axis=1)  #
 
     # API calculation: APIt = Pt + k * APIt-1 (Eq. 9)
     api_vals, curr_api = [], 0
@@ -44,9 +43,7 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Trend Persistence (Eq. 21)
     df['delta_WL_t'] = df['water_level_cm'].diff().fillna(0)
-
-    # MODIFIED: Predict 3 days ahead instead of 1
-    df['target_change_3d'] = df['water_level_cm'].shift(-3) - df['water_level_cm']
+    df['target_change'] = df['water_level_cm'].shift(-1) - df['water_level_cm']
 
     return df.dropna()
 
@@ -57,7 +54,7 @@ def build_anfis(num_inputs, num_mfs):
         # Bell functions to capture thresholds like theta_API (Eq. 15)
         mfs = [BellMembFunc(torch.rand(1), torch.rand(1), torch.rand(1)) for _ in range(num_mfs)]
         invardefs.append((f'x{i}', mfs))
-    return AnfisNet('Flood Model 3D', invardefs, ['y'], hybrid=True)
+    return AnfisNet('Flood Model', invardefs, ['y'], hybrid=True)
 
 
 def train_and_save():
@@ -67,9 +64,8 @@ def train_and_save():
     scaler_X, scaler_y = MinMaxScaler(), MinMaxScaler()
     X_scaled, y_scaled = scaler_X.fit_transform(X), scaler_y.fit_transform(y)
 
-    # MODIFIED: Save scalers with a '_3d' suffix
-    joblib.dump(scaler_X, "Scalers/scaler_X_3d.pkl")
-    joblib.dump(scaler_y, "Scalers/scaler_y_3d.pkl")
+    joblib.dump(scaler_X, "../Scalers/scaler_X.pkl");
+    joblib.dump(scaler_y, "scaler_y.pkl")
 
     model = build_anfis(len(FEATURES_LIST), NUM_MFS)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
@@ -78,19 +74,17 @@ def train_and_save():
     x_t, y_t = torch.tensor(X_scaled).float(), torch.tensor(y_scaled).float()
     loader = DataLoader(TensorDataset(x_t, y_t), batch_size=16, shuffle=True)
 
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(300):
         for xb, yb in loader:
             optimizer.zero_grad()
-            loss = criterion(model(xb), yb)
-            loss.backward()
+            loss = criterion(model(xb), yb);
+            loss.backward();
             optimizer.step()
         with torch.no_grad():
             model.fit_coeff(x_t, y_t)
-        if (epoch + 1) % 20 == 0:
-            print(f"Epoch {epoch + 1}, Loss: {loss.item():.6f}")
+        if (epoch + 1) % 20 == 0: print(f"Epoch {epoch + 1}, Loss: {loss.item():.6f}")
 
-    # MODIFIED: Save the model with a '_3d' suffix
-    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "ANFIS_models/anfis_model_3d.pth")
+    torch.save({'model_state_dict': model.state_dict(), 'coeff': model.coeff}, "../ANFIS_models/anfis_model.pth")
 
 
 if __name__ == "__main__":
