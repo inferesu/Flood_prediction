@@ -6,14 +6,14 @@ from torch.utils.data import TensorDataset, DataLoader
 from anfis.anfis import AnfisNet
 from anfis.membership import BellMembFunc
 
-# --- Config ---
+
 SEED = 42
 NUM_MFS = 5
 NUM_EPOCHS = 300
 random.seed(SEED);
 np.random.seed(SEED);
 torch.manual_seed(SEED)
-K_DECAY = 0.85  #
+K_DECAY = 0.85
 TRAIN_DATA_FILE = '../minija_complex_data_2024.csv'
 FEATURES_LIST = ['API_norm', 'S_t', 'SMI_t', 'Pt', 'delta_WL_t']
 TARGET = 'target_change'
@@ -23,7 +23,7 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy().sort_index()
     df['Pt'] = df[['precip_klaipedos-ams', 'precip_vezaiciu-ams']].mean(axis=1)  #
 
-    # API calculation: APIt = Pt + k * APIt-1 (Eq. 9)
+    # APIt = Pt + k * APIt-1 (Eq. 9)
     api_vals, curr_api = [], 0
     for p in df['Pt']:
         curr_api = p + (K_DECAY * curr_api)
@@ -37,7 +37,7 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
     d = pd.to_datetime(df['timestamp']).dt.dayofyear
     df['S_t'] = np.cos((2 * np.pi * d) / 365)
 
-    # Snowmelt Index (SMI_t) (Eq. 17)
+    # Snowmelt Index SMI_t (Eq. 17)
     avg_t = df[['temp_klaipedos-ams', 'temp_vezaiciu-ams']].mean(axis=1)
     df['SMI_t'] = avg_t.apply(lambda x: max(0, x * 2.5) if x > 0 else 0)
 

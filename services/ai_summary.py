@@ -12,12 +12,11 @@ from config.rivers import RIVER_CONFIGS
 
 logger = logging.getLogger("flood_app")
 
-# Lazy-initialized client
+
 _client = None
 
 
 def _get_client():
-    """Initialize the Gemini client on first use (after dotenv is loaded)."""
     global _client
     if _client is None:
         from google import genai
@@ -29,7 +28,6 @@ def _get_client():
 
 
 def _determine_risk(level_val, risk_levels: list) -> str:
-    """Map a water level to a risk category string."""
     if not isinstance(level_val, (int, float)):
         return "UNKNOWN"
     r1, r2, r3 = risk_levels
@@ -43,7 +41,6 @@ def _determine_risk(level_val, risk_levels: list) -> str:
 
 
 def generate_summary() -> dict:
-    """Generate an AI summary from all available river prediction logs."""
     river_lines = []
 
     for key, cfg in RIVER_CONFIGS.items():

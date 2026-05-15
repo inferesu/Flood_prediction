@@ -17,10 +17,7 @@ _TIMEOUT = 10
 
 
 def fetch_water_level_latest(station_code: str) -> Optional[float]:
-    """Fetch the most recent water level (cm) from the hydro API.
 
-    Tries today, then yesterday, then two days ago.
-    """
     for days_back in range(3):
         date_str = (datetime.now().date() - timedelta(days=days_back)).strftime("%Y-%m-%d")
         url = f"{_API_BASE_HYDRO}/{station_code}/observations/measured/{date_str}"
@@ -38,7 +35,6 @@ def fetch_water_level_latest(station_code: str) -> Optional[float]:
 
 
 def fetch_meteo_latest(station_code: str) -> Tuple[float, float]:
-    """Return (total_precip_mm, avg_temperature_C) for today."""
     date_str = datetime.now().strftime("%Y-%m-%d")
     url = f"{_API_BASE_METEO}/{station_code}/observations/{date_str}"
     try:
@@ -57,7 +53,6 @@ def fetch_meteo_latest(station_code: str) -> Tuple[float, float]:
 
 
 def fetch_station_forecast(station_code: str, main_forecast_level: float) -> Tuple[float, float]:
-    """Return (current_level, forecast_level) for a secondary station."""
     try:
         current = fetch_water_level_latest(station_code)
         if current is None:

@@ -12,7 +12,6 @@ from config.constants import K_DECAY, MF_LABELS
 
 
 def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute derived features from raw hydro/meteo time-series."""
     df = df.copy().sort_values("timestamp")
 
     # Average precipitation across all precip columns
@@ -31,7 +30,7 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
         (df["API_t"] - a_min) / (a_max - a_min) if a_max != a_min else 0.0
     )
 
-    # Seasonality (cosine of day-of-year)
+    # Seasonality
     doy = pd.to_datetime(df["timestamp"]).dt.dayofyear
     df["S_t"] = np.cos((2 * np.pi * doy) / 365)
 
@@ -50,7 +49,6 @@ def prepare_complex_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def extract_strongest_rule(model, X_scaled: np.ndarray, num_mfs: int) -> Tuple[int, float, List[int]]:
-    """Identify the dominant ANFIS rule and its membership function indices."""
     with torch.no_grad():
         X_tensor = torch.tensor(X_scaled).float()
         fuzzified = model.layer["fuzzify"](X_tensor)
@@ -71,7 +69,6 @@ def extract_strongest_rule(model, X_scaled: np.ndarray, num_mfs: int) -> Tuple[i
 
 
 def format_rule_string(rule_id: int, activation: float, mf_indices: List[int]) -> str:
-    """Create a human-readable rule explanation string."""
     feature_names = ["API_norm", "S_t", "SMI_t", "Pt", "delta_WL_t"]
     parts = [
         f"{fn} is {MF_LABELS[fn][mf_indices[i]]}"

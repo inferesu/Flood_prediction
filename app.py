@@ -22,7 +22,6 @@ def create_app():
 
 
 def run_startup_jobs():
-    """Run all prediction jobs in parallel on startup."""
 
     def _run_one(cfg):
         try:
@@ -31,7 +30,7 @@ def run_startup_jobs():
             logger.error(f"Startup job failed for {cfg['display_name']}: {e}")
 
     def _startup():
-        logger.info("=== Running startup prediction jobs ===")
+        logger.info("Running startup prediction jobs")
         time.sleep(2)
 
         threads = [
@@ -43,7 +42,7 @@ def run_startup_jobs():
         for t in threads:
             t.join()
 
-        logger.info("=== Startup prediction jobs complete ===")
+        logger.info("Startup complete")
 
     threading.Thread(target=_startup, daemon=True).start()
 
