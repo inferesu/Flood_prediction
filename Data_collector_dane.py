@@ -4,7 +4,7 @@ import requests
 import numpy as np
 from datetime import datetime, timedelta
 
-# --- Configuration ---
+
 DATA_FILE = 'danija_complex_data_2024.csv'
 STATION_CODE_HYDRO = 'klaipedos-vms'
 STATION_CODE_METEO_1 = 'klaipedos-ams'
@@ -12,7 +12,6 @@ K_DECAY = 0.85  # Decay coefficient for API
 
 
 def fetch_water_levels(station_code, start_date, end_date):
-    """Fetches water level data from measured and historical endpoints."""
     all_obs = []
     today = datetime.utcnow().date()
     current = start_date

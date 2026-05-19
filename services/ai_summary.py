@@ -1,4 +1,3 @@
-"""Gemini-powered AI summary of current flood conditions."""
 
 from __future__ import annotations
 
